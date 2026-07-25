@@ -20,12 +20,20 @@ export function SignIn() {
   }
 
   if (sent) {
-    return <p>Check {email} for a magic sign-in link.</p>;
+    return (
+      <div className="card" style={{ maxWidth: 380 }}>
+        <p style={{ margin: 0 }}>Check {email} for a magic sign-in link.</p>
+      </div>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="signin-form">
-      <label htmlFor="email">Email</label>
+    <form onSubmit={handleSubmit} className="card" style={{ maxWidth: 380 }}>
+      <h2>Sign in</h2>
+      <p className="hint">Get a magic link — no password to set.</p>
+      <label htmlFor="email" className="stat-label" style={{ marginBottom: "0.4rem" }}>
+        Email
+      </label>
       <input
         id="email"
         type="email"
@@ -33,8 +41,11 @@ export function SignIn() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
+        style={{ marginBottom: "0.75rem" }}
       />
-      <button type="submit">Send magic link</button>
+      <button type="submit" className="primary">
+        Send magic link
+      </button>
       {error && <p className="error">{error}</p>}
     </form>
   );

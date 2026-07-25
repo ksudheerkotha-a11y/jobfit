@@ -2,7 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "jobfit",
+  title: "jobfit — Executive Shortlist",
   description: "Fewer, better, real job matches.",
 };
 

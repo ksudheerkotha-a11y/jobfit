@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { MatchedJobRow } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
 import { ResumeForm } from "@/components/ResumeForm";
 import { MatchesTable } from "@/components/MatchesTable";
+import { StatTile } from "@/components/StatTile";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -55,33 +56,75 @@ export default function Home() {
     });
   }, [session]);
 
+  const stats = useMemo(() => {
+    if (matches.length === 0) return null;
+
+    const avgFit = matches.reduce((sum, m) => sum + m.fit_score, 0) / matches.length;
+    const top = matches[0];
+    const companies = new Set(matches.map((m) => m.jobs?.company).filter(Boolean));
+
+    return {
+      count: matches.length,
+      avgFit: Math.round(avgFit * 100),
+      topFit: Math.round(top.fit_score * 100),
+      topTitle: top.jobs?.title ?? "",
+      topCompany: top.jobs?.company ?? "",
+      companyCount: companies.size,
+    };
+  }, [matches]);
+
   if (loadingSession) {
-    return <main className="container">Loading...</main>;
+    return <main className="container center-page">Loading...</main>;
   }
 
   if (!session) {
     return (
-      <main className="container">
-        <h1>jobfit</h1>
-        <p className="hint">Sign in to see your shortlist.</p>
-        <SignIn />
+      <main className="container center-page">
+        <div>
+          <div className="brand" style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <h1>jobfit</h1>
+            <p className="tagline">Fewer, better, real job matches.</p>
+          </div>
+          <SignIn />
+        </div>
       </main>
     );
   }
 
   return (
     <main className="container">
-      <header>
-        <h1>jobfit</h1>
-        <button onClick={() => supabase.auth.signOut()}>Sign out</button>
+      <header className="app-header">
+        <div className="brand">
+          <h1>jobfit</h1>
+          <p className="tagline">Executive shortlist</p>
+        </div>
+        <div className="header-actions">
+          <span className="user-email">{session.user.email}</span>
+          <button className="ghost" onClick={() => supabase.auth.signOut()}>
+            Sign out
+          </button>
+        </div>
       </header>
+
+      {stats && (
+        <div className="stat-grid">
+          <StatTile label="Shortlist size" value={String(stats.count)} subtitle="active matches" />
+          <StatTile label="Avg. fit" value={`${stats.avgFit}%`} subtitle={`across ${stats.count} roles`} />
+          <StatTile
+            label="Top match"
+            value={`${stats.topFit}%`}
+            subtitle={`${stats.topTitle} · ${stats.topCompany}`}
+          />
+          <StatTile label="Companies" value={String(stats.companyCount)} subtitle="represented in shortlist" />
+        </div>
+      )}
 
       <ResumeForm userId={session.user.id} initialText={resumeText} />
 
-      <section>
-        <h2>Your shortlist</h2>
-        {loadingData ? <p>Loading matches...</p> : <MatchesTable matches={matches} />}
-      </section>
+      <div className="card">
+        <h2 style={{ marginBottom: "1rem" }}>Your shortlist</h2>
+        {loadingData ? <p className="hint">Loading matches...</p> : <MatchesTable matches={matches} />}
+      </div>
     </main>
   );
 }
