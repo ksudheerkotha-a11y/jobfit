@@ -1,0 +1,57 @@
+# Curated for Customer Success / SaaS / Conversational-AI roles.
+# Verified live on 2026-07-26 (each board actually had open postings, several
+# with Customer Success titles specifically):
+#   - postman:   9 Customer Success Engineer roles, including APAC-specific ones
+#   - intercom:  12 Customer Success Manager / Account Manager roles
+#   - airtable, amplitude, pendo: SaaS companies worth watching for CS openings
+#
+# Add more with:
+#   greenhouse token = the slug in boards.greenhouse.io/<token>
+#   lever slug       = the slug in jobs.lever.co/<slug>
+companies:
+  - type: greenhouse
+    token: postman
+  - type: greenhouse
+    token: intercom
+  - type: greenhouse
+    token: airtable
+  - type: greenhouse
+    token: amplitude
+  - type: greenhouse
+    token: pendo
+
+# Skill/keyword vocabulary tailored to a Customer Success / SaaS / GenAI
+# background (see fixtures/ for the generic backend-engineer example instead).
+skills:
+  - customer success
+  - customer success management
+  - customer experience
+  - onboarding
+  - adoption
+  - churn
+  - churn prediction
+  - retention
+  - renewals
+  - upsell
+  - expansion
+  - nps
+  - qbr
+  - account management
+  - enterprise accounts
+  - client success
+  - saas
+  - b2b saas
+  - conversational ai
+  - genai
+  - whatsapp business platform
+  - salesforce
+  - zoho
+  - crm
+  - api integration
+  - rest api
+  - sql
+  - dashboards
+  - data analytics
+  - rbac
+  - multi-tenant
+  - stakeholder management

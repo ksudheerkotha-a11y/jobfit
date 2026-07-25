@@ -3,8 +3,8 @@
 resume, gate on fit, upsert into Supabase `matches`. Runs after ingest.py
 (see .github/workflows/ingest.yml).
 
-    JOBFIT_DRY_RUN=1 python match.py --scorer local   # prints, writes nothing
-    python match.py --scorer local                    # writes to Supabase
+    JOBFIT_DRY_RUN=1 python match.py --scorer local --top 15   # prints, writes nothing
+    python match.py --scorer local --top 15                    # writes to Supabase
 
 In dry-run mode there's no `resumes` table to read from, so this scores a
 single resume passed via --resume (defaults to the fixture resume) against
@@ -31,6 +31,9 @@ def main() -> None:
     parser.add_argument("--scorer", choices=["local", "claude"], default="local")
     parser.add_argument("--min-fit", type=float, default=0.35)
     parser.add_argument(
+        "--top", type=int, default=15, help="Keep only the top N ranked matches per user"
+    )
+    parser.add_argument(
         "--resume",
         default=str(DEMO_RESUME),
         help="Dry-run only: resume to score against (real runs read every row of `resumes`)",
@@ -43,7 +46,7 @@ def main() -> None:
 
     if DRY_RUN:
         resume_text = load_resume(args.resume)
-        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit)
+        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top)
         logging.info("[dry-run] %d matches for demo resume %s", len(matches), args.resume)
         upsert_matches(user_id="dry-run-user", matches=matches)
         return
@@ -52,7 +55,7 @@ def main() -> None:
     logging.info("Scoring against %d user resumes", len(resumes))
     for resume_row in resumes:
         resume_text = resume_row["resume_text"]
-        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit)
+        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top)
         upsert_matches(user_id=resume_row["user_id"], matches=matches)
         logging.info("%d matches for user %s", len(matches), resume_row["user_id"])
 

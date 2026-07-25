@@ -103,6 +103,14 @@ def fetch_resumes() -> list[dict[str, str]]:
 
 
 def upsert_matches(user_id: str, matches: list[MatchedJob]) -> None:
+    """Replace a user's shortlist with the given matches.
+
+    Each run's matches are meant to *be* the current shortlist, not accumulate
+    on top of previous runs (see the README's "fewer, better" thesis) — so
+    this also removes prior matches that no longer make the cut. It never
+    touches a row the user has already acted on (status != "new"), since
+    that's user state, not something a re-run should be able to erase.
+    """
     rows = [
         {
             "user_id": user_id,
@@ -118,4 +126,12 @@ def upsert_matches(user_id: str, matches: list[MatchedJob]) -> None:
         _print_preview("matches", rows)
         return
 
-    _client().table("matches").upsert(rows).execute()
+    client = _client()
+    keep_ids = [row["job_id"] for row in rows]
+    prune = client.table("matches").delete().eq("user_id", user_id).eq("status", "new")
+    if keep_ids:
+        prune = prune.not_.in_("job_id", keep_ids)
+    prune.execute()
+
+    if rows:
+        client.table("matches").upsert(rows).execute()
