@@ -13,7 +13,11 @@ npm run dev
 
 ## What's here
 
-- Email magic-link auth (Supabase Auth) — no password handling in this app.
+- Email + password signup/sign-in (Supabase Auth). Signup requires confirming
+  a one-time email if your project has "Confirm email" enabled (Supabase
+  default); sign-in after that needs no email round-trip, avoiding the strict
+  rate limit on Supabase's default (dev-only) email sender — see "Auth email
+  delivery" below if you expect real signup volume.
 - A resume textarea that upserts into the `resumes` table, keyed to the
   signed-in user (`auth.uid()`), for the next scheduled `match.py` run to
   score against.
@@ -42,4 +46,12 @@ auto-detection will find the Python engine at the repo root instead of this
 Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 as project environment variables. After deploying, add the production URL to
 your Supabase project's Authentication → URL Configuration (Site URL and
-Redirect URLs) or magic-link emails will redirect back to `localhost`.
+Redirect URLs) or confirmation emails will redirect back to `localhost`.
+
+## Auth email delivery
+
+Supabase's default email sender is a shared, heavily rate-limited service
+meant for development only — expect "email rate limit exceeded" under any
+real signup volume. Before opening this up to other users, configure a
+custom SMTP provider under Authentication → Emails → SMTP Settings (Resend,
+Postmark, SendGrid, or a Gmail relay all work).
