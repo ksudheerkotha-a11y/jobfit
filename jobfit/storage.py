@@ -134,4 +134,7 @@ def upsert_matches(user_id: str, matches: list[MatchedJob]) -> None:
     prune.execute()
 
     if rows:
-        client.table("matches").upsert(rows).execute()
+        # matches' primary key is an unrelated bigserial id; the constraint
+        # that actually matters for "update if this pairing already exists"
+        # is (user_id, job_id), so it must be named explicitly here.
+        client.table("matches").upsert(rows, on_conflict="user_id,job_id").execute()
