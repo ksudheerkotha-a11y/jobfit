@@ -1,0 +1,36 @@
+Jordan Ellis
+Software Engineer
+
+SUMMARY
+Backend-leaning full-stack engineer with 6 years of experience building and
+scaling web applications and internal tooling. Comfortable owning a feature
+from API design through to deployment.
+
+SKILLS
+Python, JavaScript, TypeScript, React, Node.js, SQL, PostgreSQL, AWS (EC2, S3,
+Lambda), Docker, REST API design, CI/CD (GitHub Actions), Git.
+
+EXPERIENCE
+
+Senior Software Engineer — Northwind Data (2022-Present)
+- Built and maintained a Python/Django REST API serving ~2M requests/day.
+- Led migration of a monolith's job-scheduling module to a set of async
+  workers, cutting p95 latency by 40%.
+- Owned CI/CD pipeline (GitHub Actions) for 3 services, including automated
+  Postgres migration checks.
+- Mentored 2 junior engineers; ran the team's weekly design review.
+
+Software Engineer — Bramblewood Software (2019-2022)
+- Built customer-facing dashboards in React/TypeScript on top of an internal
+  GraphQL-free REST API.
+- Wrote and maintained SQL data pipelines feeding weekly reporting.
+- Deployed services to AWS (EC2, S3, Lambda) behind an API gateway.
+- Introduced Docker-based local dev environment, cutting onboarding time from
+  2 days to 2 hours.
+
+Software Engineer — Cascade Labs (2018-2019)
+- Full-stack feature work in a Node.js/Express + React codebase.
+- Wrote integration tests and improved test coverage from 40% to 75%.
+
+EDUCATION
+B.S. Computer Science, University of Washington, 2018

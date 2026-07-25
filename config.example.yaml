@@ -1,0 +1,37 @@
+# Curate 20-40 companies in your target space. Precision beats a huge list.
+#
+# Greenhouse token = the slug in boards.greenhouse.io/<token>
+# Lever slug       = the slug in jobs.lever.co/<slug>
+companies:
+  - type: greenhouse
+    token: stripe
+  - type: greenhouse
+    token: airbnb
+  - type: lever
+    slug: netflix
+  - type: lever
+    slug: figma
+
+# Curated skill vocabulary the local scorer checks resume/JD overlap against.
+# Extend this with terms specific to your target roles.
+skills:
+  - python
+  - javascript
+  - typescript
+  - react
+  - node.js
+  - sql
+  - postgres
+  - aws
+  - gcp
+  - azure
+  - docker
+  - kubernetes
+  - ci/cd
+  - rest api
+  - graphql
+  - machine learning
+  - data pipeline
+  - terraform
+  - go
+  - java

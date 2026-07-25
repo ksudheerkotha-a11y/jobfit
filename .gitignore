@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+matches.json
+.jobfit_dry_run_jobs.json
+*.egg-info/
+.env
+.env.local
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo

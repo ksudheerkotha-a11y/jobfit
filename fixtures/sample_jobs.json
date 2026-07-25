@@ -1,0 +1,90 @@
+[
+  {
+    "source": "greenhouse",
+    "external_id": "1001",
+    "company": "globex",
+    "title": "Backend Engineer",
+    "location": "Remote (US)",
+    "posted_at": "2026-07-21",
+    "department": "Engineering",
+    "apply_url": "https://boards.greenhouse.io/globex/jobs/1001",
+    "description": "Globex is looking for a Backend Engineer to join our platform team. You'll design and own REST APIs in Python (Django/FastAPI), work directly with PostgreSQL for our core data models, and help scale our services on AWS (EC2, S3, Lambda). We run CI/CD via GitHub Actions and expect strong git hygiene and code review habits. You'll partner with frontend engineers consuming your APIs and with the data team on pipeline reliability. 5+ years of backend experience preferred. Experience with Docker for local development is a plus."
+  },
+  {
+    "source": "lever",
+    "external_id": "2001",
+    "company": "initech",
+    "title": "Senior Python Engineer",
+    "location": "New York, NY",
+    "posted_at": "2026-07-16",
+    "department": "Infrastructure",
+    "apply_url": "https://jobs.lever.co/initech/2001",
+    "description": "Initech's infrastructure team is hiring a Senior Python Engineer. You'll build internal tooling in Python, manage deployments on AWS, and help us adopt Kubernetes and Terraform for infrastructure-as-code across our services. Strong Docker and CI/CD experience required. You'll be on-call for the services you own and expected to write clear runbooks. Bonus points for prior experience with PostgreSQL performance tuning at scale."
+  },
+  {
+    "source": "greenhouse",
+    "external_id": "1002",
+    "company": "acme",
+    "title": "Frontend Engineer",
+    "location": "San Francisco, CA",
+    "posted_at": "2026-07-23",
+    "department": "Product Engineering",
+    "apply_url": "https://boards.greenhouse.io/acme/jobs/1002",
+    "description": "Acme is hiring a Frontend Engineer to build customer-facing dashboards in React and TypeScript. You'll work closely with design on a component library, consume REST APIs built by our backend team, and help improve our CI/CD pipeline for frontend deploys. Experience with Node.js tooling (webpack/vite) is expected. This is a highly collaborative role partnering with product and design daily."
+  },
+  {
+    "source": "lever",
+    "external_id": "2002",
+    "company": "initrode",
+    "title": "Machine Learning Engineer",
+    "location": "Remote (US)",
+    "posted_at": "2026-07-19",
+    "department": "Data Science",
+    "apply_url": "https://jobs.lever.co/initrode/2002",
+    "description": "Initrode is looking for a Machine Learning Engineer to build and deploy production ML models. You'll own the full lifecycle from feature engineering to model serving, working closely with data scientists on experiment design. Strong background in machine learning, statistics, and Python required. Experience with model monitoring, feature stores, and GPU training infrastructure is a big plus. This role sits within our Data Science org and reports to the Head of ML."
+  },
+  {
+    "source": "greenhouse",
+    "external_id": "1003",
+    "company": "globex",
+    "title": "Site Reliability Engineer",
+    "location": "Remote (US)",
+    "posted_at": "2026-04-27",
+    "department": "Infrastructure",
+    "apply_url": "https://boards.greenhouse.io/globex/jobs/1003",
+    "description": "Globex is hiring a Site Reliability Engineer to own our Kubernetes platform across GCP and AWS. You'll build Terraform modules, improve our observability stack, and lead incident response for production systems. Deep Kubernetes and Terraform experience is required, along with comfort operating multi-region infrastructure. This posting has been open for a while as we look for the right senior hire."
+  },
+  {
+    "source": "greenhouse",
+    "external_id": "1004",
+    "company": "acme",
+    "title": "Marketing Coordinator",
+    "location": "San Francisco, CA",
+    "posted_at": "2026-07-20",
+    "department": "Marketing",
+    "apply_url": "https://boards.greenhouse.io/acme/jobs/1004",
+    "description": "Join our marketing team! Great opportunity, fast-paced environment."
+  },
+  {
+    "source": "lever",
+    "external_id": "2003",
+    "company": "globex",
+    "title": "Backend Engineer",
+    "location": "Remote (US)",
+    "posted_at": "2026-07-20",
+    "department": "Engineering",
+    "apply_url": "https://jobs.lever.co/globex/2003",
+    "description": "Globex backend team is hiring. Python, AWS, PostgreSQL. Cross-posted role, see our Greenhouse board for full details."
+  },
+  {
+    "source": "lever",
+    "external_id": "2004",
+    "company": "hooli",
+    "title": "Full Stack Engineer",
+    "location": "Austin, TX",
+    "posted_at": "2026-07-12",
+    "department": "Engineering",
+    "apply_url": "https://jobs.lever.co/hooli/2004",
+    "description": "Hooli is hiring a Full Stack Engineer to work across our Node.js/React stack and our Python data services. You'll design GraphQL APIs consumed by our web and mobile clients, work with PostgreSQL, and deploy to AWS behind Docker containers. We value engineers who are comfortable moving between frontend and backend code within the same week. CI/CD experience with GitHub Actions expected."
+  }
+]
