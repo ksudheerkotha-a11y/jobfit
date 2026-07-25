@@ -21,10 +21,25 @@ npm run dev
   query in the root README's Deploy section. RLS in `supabase_schema.sql`
   guarantees a user only ever sees their own matches; `jobs` rows are public.
 
+- An executive-dashboard layout: KPI stat tiles (shortlist size, avg fit, top
+  match, companies represented), a fit-score meter and skill pills in the
+  matches table, and a collapsible resume card. Colors and light/dark modes
+  come from a validated palette (see `globals.css`).
+
 ## What's not here (yet)
 
 - Marking a match as applied/dismissed (the `matches.status` column exists,
   nothing in the UI writes to it yet).
-- Any styling system — this is plain CSS, intentionally undecorated.
 - Server-side rendering / auth cookies — this is a client-only skeleton using
   the browser Supabase client directly.
+
+## Deploying to Vercel
+
+This app lives in `frontend/`, not the repo root, so when importing the repo
+on Vercel: set **Root Directory** to `frontend` (Settings → Build and
+Deployment → Root Directory) before the first deploy, or Vercel's
+auto-detection will find the Python engine at the repo root instead of this
+Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+as project environment variables. After deploying, add the production URL to
+your Supabase project's Authentication → URL Configuration (Site URL and
+Redirect URLs) or magic-link emails will redirect back to `localhost`.
