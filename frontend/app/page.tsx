@@ -19,7 +19,10 @@ export default function Home() {
   const [loadingSession, setLoadingSession] = useState(true);
   const [resumeText, setResumeText] = useState("");
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
+  // Starts true (not false) so ResumeForm never mounts with a stale empty
+  // initialText before the fetch below resolves — its internal textarea
+  // state only initializes once, from its first-render props.
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -119,7 +122,15 @@ export default function Home() {
         </div>
       )}
 
-      <ResumeForm userId={session.user.id} initialText={resumeText} />
+      {loadingData ? (
+        <div className="card">
+          <p className="hint" style={{ margin: 0 }}>
+            Loading your resume...
+          </p>
+        </div>
+      ) : (
+        <ResumeForm userId={session.user.id} initialText={resumeText} />
+      )}
 
       <div className="card">
         <h2 style={{ marginBottom: "1rem" }}>Your shortlist</h2>
