@@ -22,10 +22,17 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="Fetch live boards and rank fit against a resume")
     run.add_argument("--resume", required=True, help="Path to resume (.txt/.md/.pdf)")
     run.add_argument("--config", required=True, help="Path to config.yaml")
-    run.add_argument("--scorer", choices=["local", "claude"], default="local")
+    run.add_argument("--scorer", choices=["local", "claude", "groq"], default="local")
     run.add_argument("--min-fit", type=float, default=0.0, help="Drop matches below this fit score (0-1)")
     run.add_argument("--max-age-days", type=int, default=None, help="Drop postings older than this")
     run.add_argument("--top", type=int, default=None, help="Keep only the top N ranked matches")
+    run.add_argument(
+        "--prefilter-top",
+        type=int,
+        default=100,
+        help="For claude/groq scorers: only send the top N local-scored jobs to the API "
+        "(ignored for --scorer local). Keeps LLM scoring under free-tier rate limits.",
+    )
     run.add_argument("--out", default=None, help="Write ranked matches as JSON to this path")
 
     return parser
@@ -69,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
             min_fit=args.min_fit,
             max_age_days=args.max_age_days,
             top=args.top,
+            prefilter_top=args.prefilter_top if args.scorer != "local" else None,
         )
 
         print_table(matches)

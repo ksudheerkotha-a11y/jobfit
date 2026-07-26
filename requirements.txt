@@ -8,5 +8,9 @@ tabulate>=0.9
 # Optional, only needed for --scorer claude:
 # anthropic>=0.40
 
+# Optional, only needed for --scorer groq (free tier, no card required —
+# get a key at console.groq.com):
+# groq>=0.11
+
 # Optional, only needed for real (non dry-run) Supabase writes:
 # supabase>=2.4

@@ -1,11 +1,18 @@
 """Fit scoring: resume x job description -> ScoreResult.
 
-Two scorers, same interface (`Scorer.score(resume_text, job) -> ScoreResult`):
+Three scorers, same interface (`Scorer.score(resume_text, job) -> ScoreResult`):
 
 - LocalScorer: TF-IDF cosine similarity + explicit skill-coverage. Free, fast,
   offline, keyword-aware rather than deeply semantic.
 - ClaudeScorer: sends resume + JD to the Claude API for genuine semantic
   judgement. Requires ANTHROPIC_API_KEY and `pip install anthropic`.
+- GroqScorer: same semantic-judgement approach via Groq's free-tier API
+  (Llama models). Requires GROQ_API_KEY and `pip install groq`.
+
+Both LLM scorers make one API call per job — see pipeline.run_pipeline's
+prefilter_top, which pre-narrows the candidate list with LocalScorer first
+so a real config (hundreds+ of jobs) doesn't blow through free-tier request
+limits or run needlessly slowly/expensively.
 """
 
 from __future__ import annotations
@@ -79,7 +86,7 @@ class LocalScorer:
         return ScoreResult(fit_score=fit_score, missing_skills=missing, reasons=reasons)
 
 
-_CLAUDE_PROMPT = """You are scoring how well a candidate's resume fits a job description.
+_FIT_PROMPT = """You are scoring how well a candidate's resume fits a job description.
 
 Resume:
 {resume}
@@ -109,7 +116,7 @@ class ClaudeScorer:
         self.model = model
 
     def score(self, resume_text: str, job: Job) -> ScoreResult:
-        prompt = _CLAUDE_PROMPT.format(
+        prompt = _FIT_PROMPT.format(
             resume=resume_text.strip(),
             title=job.title,
             company=job.company,
@@ -131,10 +138,44 @@ class ClaudeScorer:
         )
 
 
+class GroqScorer:
+    """Uses Groq's free-tier API (Llama models) for semantic fit judgement —
+    a no-cost alternative to ClaudeScorer. Get a free key at console.groq.com."""
+
+    def __init__(self, model: str = "llama-3.3-70b-versatile", client=None):
+        if client is not None:
+            self.client = client
+        else:
+            from groq import Groq
+
+            self.client = Groq()
+        self.model = model
+
+    def score(self, resume_text: str, job: Job) -> ScoreResult:
+        prompt = _FIT_PROMPT.format(
+            resume=resume_text.strip(),
+            title=job.title,
+            company=job.company,
+            jd=job.description.strip(),
+        )
+        response = self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content or ""
+        data = _extract_json(text)
+        return ScoreResult(
+            fit_score=float(data.get("fit_score", 0.0)),
+            missing_skills=list(data.get("missing_skills", [])),
+            reasons=list(data.get("reasons", [])),
+        )
+
+
 def _extract_json(text: str) -> dict:
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
-        raise ValueError(f"Could not find JSON in Claude response: {text!r}")
+        raise ValueError(f"Could not find JSON in scorer response: {text!r}")
     return json.loads(match.group(0))
 
 
@@ -143,4 +184,6 @@ def get_scorer(name: str, skills: list[str] | None = None) -> Scorer:
         return LocalScorer(skills=skills)
     if name == "claude":
         return ClaudeScorer()
-    raise ValueError(f"Unknown scorer: {name!r} (expected 'local' or 'claude')")
+    if name == "groq":
+        return GroqScorer()
+    raise ValueError(f"Unknown scorer: {name!r} (expected 'local', 'claude', or 'groq')")

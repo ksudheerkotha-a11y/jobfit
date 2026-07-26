@@ -55,7 +55,12 @@ There's no public directory. A Greenhouse token is the slug in
   feeds. Add a `jobfit/sources/ashby.py` returning `Job` objects and register it
   in `sources/__init__.py._FETCHERS`. Same shape, ~20 lines each.
 - **Better scoring**: `--scorer claude` (set `ANTHROPIC_API_KEY`, `pip install
-  anthropic`) for genuine semantic judgement instead of keyword overlap.
+  anthropic`) or `--scorer groq` (set `GROQ_API_KEY`, `pip install groq` — a
+  free tier with no card required, at console.groq.com) for genuine semantic
+  judgement instead of keyword overlap. Either way, jobs are pre-narrowed to
+  the top `--prefilter-top` (default 100) by the free local scorer first, so
+  a real config doesn't burn through free-tier request limits or make
+  hundreds of API calls just to score the whole board.
 - **The next module (the real differentiator)**: a *human-path* step — check the
   user's own network for a connection at each shortlisted company and draft the
   referral ask. A warm intro is worth 4–10x a cold apply; that's the wedge.

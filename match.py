@@ -28,10 +28,17 @@ DEMO_RESUME = Path(__file__).parent / "fixtures" / "sample_resume.txt"
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scorer", choices=["local", "claude"], default="local")
+    parser.add_argument("--scorer", choices=["local", "claude", "groq"], default="local")
     parser.add_argument("--min-fit", type=float, default=0.35)
     parser.add_argument(
         "--top", type=int, default=15, help="Keep only the top N ranked matches per user"
+    )
+    parser.add_argument(
+        "--prefilter-top",
+        type=int,
+        default=100,
+        help="For claude/groq scorers: only send the top N local-scored jobs to the API "
+        "(ignored for --scorer local). Keeps LLM scoring under free-tier rate limits.",
     )
     parser.add_argument(
         "--resume",
@@ -41,12 +48,15 @@ def main() -> None:
     args = parser.parse_args()
 
     scorer = get_scorer(args.scorer)
+    prefilter_top = args.prefilter_top if args.scorer != "local" else None
     jobs = fetch_jobs()
     logging.info("Loaded %d jobs to score", len(jobs))
 
     if DRY_RUN:
         resume_text = load_resume(args.resume)
-        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top)
+        matches = run_pipeline(
+            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top, prefilter_top=prefilter_top
+        )
         logging.info("[dry-run] %d matches for demo resume %s", len(matches), args.resume)
         upsert_matches(user_id="dry-run-user", matches=matches)
         return
@@ -55,7 +65,9 @@ def main() -> None:
     logging.info("Scoring against %d user resumes", len(resumes))
     for resume_row in resumes:
         resume_text = resume_row["resume_text"]
-        matches = run_pipeline(jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top)
+        matches = run_pipeline(
+            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top, prefilter_top=prefilter_top
+        )
         upsert_matches(user_id=resume_row["user_id"], matches=matches)
         logging.info("%d matches for user %s", len(matches), resume_row["user_id"])
 
