@@ -3,7 +3,11 @@
 # with Customer Success titles specifically):
 #   - postman:   9 Customer Success Engineer roles, including APAC-specific ones
 #   - intercom:  12 Customer Success Manager / Account Manager roles
-#   - airtable, amplitude, pendo: SaaS companies worth watching for CS openings
+#   - twilio:    25 India-located roles (several Remote - India), plus
+#                Technical Account Manager openings
+#   - airtable, amplitude, pendo, mixpanel, braze, klaviyo, iterable,
+#     customerio, asana, outreach: SaaS companies with live CS/account-mgmt
+#     openings worth watching
 #
 # Add more with:
 #   greenhouse token = the slug in boards.greenhouse.io/<token>
@@ -19,6 +23,22 @@ companies:
     token: amplitude
   - type: greenhouse
     token: pendo
+  - type: greenhouse
+    token: mixpanel
+  - type: greenhouse
+    token: braze
+  - type: greenhouse
+    token: klaviyo
+  - type: greenhouse
+    token: iterable
+  - type: greenhouse
+    token: customerio
+  - type: greenhouse
+    token: twilio
+  - type: greenhouse
+    token: asana
+  - type: lever
+    slug: outreach
 
 # Skill/keyword vocabulary tailored to a Customer Success / SaaS / GenAI
 # background (see fixtures/ for the generic backend-engineer example instead).
