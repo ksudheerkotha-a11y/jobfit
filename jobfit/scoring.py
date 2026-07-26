@@ -140,7 +140,15 @@ class ClaudeScorer:
 
 class GroqScorer:
     """Uses Groq's free-tier API (Llama models) for semantic fit judgement —
-    a no-cost alternative to ClaudeScorer. Get a free key at console.groq.com."""
+    a no-cost alternative to ClaudeScorer. Get a free key at console.groq.com.
+
+    The free tier caps at 30 requests/minute; pacing calls to stay just under
+    that (rather than firing as fast as possible and relying on 429 retries)
+    is both faster in practice and avoids hammering the API with requests
+    that are just going to be rejected.
+    """
+
+    MIN_INTERVAL_SECONDS = 2.1  # ~28.5 req/min, just under the 30 RPM cap
 
     def __init__(self, model: str = "llama-3.3-70b-versatile", client=None):
         if client is not None:
@@ -150,8 +158,21 @@ class GroqScorer:
 
             self.client = Groq()
         self.model = model
+        self._last_call_at: float | None = None
+
+    def _wait_for_rate_limit(self) -> None:
+        import time
+
+        if self._last_call_at is not None:
+            elapsed = time.monotonic() - self._last_call_at
+            remaining = self.MIN_INTERVAL_SECONDS - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
+        self._last_call_at = time.monotonic()
 
     def score(self, resume_text: str, job: Job) -> ScoreResult:
+        self._wait_for_rate_limit()
+
         prompt = _FIT_PROMPT.format(
             resume=resume_text.strip(),
             title=job.title,
