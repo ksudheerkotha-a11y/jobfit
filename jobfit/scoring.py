@@ -162,6 +162,7 @@ class GroqScorer:
             model=self.model,
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
         )
         text = response.choices[0].message.content or ""
         data = _extract_json(text)
@@ -173,6 +174,11 @@ class GroqScorer:
 
 
 def _extract_json(text: str) -> dict:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         raise ValueError(f"Could not find JSON in scorer response: {text!r}")

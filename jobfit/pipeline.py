@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from jobfit.filters import dedupe, drop_ghosts, drop_stale, gate_on_fit
 from jobfit.models import Job, MatchedJob
 from jobfit.scoring import LocalScorer, Scorer
+
+logger = logging.getLogger(__name__)
 
 
 def run_pipeline(
@@ -38,7 +42,15 @@ def run_pipeline(
             filtered, key=lambda job: local.score(resume_text, job).fit_score, reverse=True
         )[:prefilter_top]
 
-    matched = [MatchedJob(job=job, score=scorer.score(resume_text, job)) for job in filtered]
+    # An LLM scorer is one network call per job — occasional bad output or a
+    # transient failure shouldn't discard every match already scored in this
+    # run, especially with rate-limited free tiers where re-running is slow.
+    matched = []
+    for job in filtered:
+        try:
+            matched.append(MatchedJob(job=job, score=scorer.score(resume_text, job)))
+        except Exception:
+            logger.warning("Skipping %s — scorer failed", job.id, exc_info=True)
 
     gated = gate_on_fit(matched, min_fit)
     ranked = sorted(gated, key=lambda m: m.score.fit_score, reverse=True)
