@@ -88,9 +88,24 @@ def fetch_jobs() -> list[Job]:
             )
         rows = json.loads(DRY_RUN_JOBS_CACHE.read_text())
     else:
-        rows = _client().table("jobs").select("*").execute().data
+        rows = _fetch_all_rows("jobs")
 
     return [_row_to_job(row) for row in rows]
+
+
+def _fetch_all_rows(table: str, page_size: int = 1000) -> list[dict[str, Any]]:
+    """select("*") without pagination silently caps at Supabase's default
+    max-rows (1000) — page through with .range() so tables past that size
+    (like `jobs`, once enough companies are configured) aren't truncated."""
+    client = _client()
+    rows: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        page = client.table(table).select("*").range(offset, offset + page_size - 1).execute().data
+        rows.extend(page)
+        if len(page) < page_size:
+            return rows
+        offset += page_size
 
 
 def fetch_resumes() -> list[dict[str, str]]:
