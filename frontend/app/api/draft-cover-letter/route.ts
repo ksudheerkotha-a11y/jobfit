@@ -63,18 +63,31 @@ export async function POST(req: NextRequest) {
     .replace("{company}", company)
     .replace("{jd}", jobDescription.trim());
 
-  const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 700,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  const callGroq = (key: string) =>
+    fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 700,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+  let groqRes = await callGroq(apiKey);
+
+  // The primary key's 100k-tokens/day cap is shared with match.py's scoring
+  // runs (same Groq account) — a second key, tracked separately by Groq, is
+  // a real budget increase rather than hitting the same wall twice.
+  if (groqRes.status === 429) {
+    const fallbackKey = process.env.GROQ_API_KEY_FALLBACK;
+    if (fallbackKey) {
+      groqRes = await callGroq(fallbackKey);
+    }
+  }
 
   if (!groqRes.ok) {
     const text = await groqRes.text();

@@ -44,6 +44,10 @@ npm run dev
   can't be hit by anonymous requests. Needs `SUPABASE_SERVICE_KEY` and
   `GROQ_API_KEY` set as **server-only** env vars (see `.env.example` —
   no `NEXT_PUBLIC_` prefix, so they never reach the browser).
+  `GROQ_API_KEY_FALLBACK` is optional: this route shares its primary key's
+  100k-tokens/day budget with `match.py`'s scoring runs (same Groq account),
+  so on a 429 it automatically retries once with the fallback key instead
+  of failing the draft.
 
 ## What's not here (yet)
 
@@ -59,8 +63,8 @@ on Vercel: set **Root Directory** to `frontend` (Settings → Build and
 Deployment → Root Directory) before the first deploy, or Vercel's
 auto-detection will find the Python engine at the repo root instead of this
 Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_KEY`, and `GROQ_API_KEY` as project environment variables
-(the last two are server-only — draft-assist won't work without them, but
+`SUPABASE_SERVICE_KEY`, `GROQ_API_KEY`, and (optional) `GROQ_API_KEY_FALLBACK`
+as project environment variables (the server-only ones — draft-assist won't work without them, but
 everything else will). After deploying, add the production URL to your
 Supabase project's Authentication → URL Configuration (Site URL and
 Redirect URLs) or confirmation emails will redirect back to `localhost`.
