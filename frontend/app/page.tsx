@@ -14,11 +14,21 @@ import { StatTile } from "@/components/StatTile";
 // when real env vars aren't necessarily present yet.
 export const dynamic = "force-dynamic";
 
+// Quick presets on top of the free-text location filter — substring match
+// against the job's location string, so e.g. "Remote" also catches
+// "Raleigh, NC / EST Remote".
+const LOCATION_PRESETS = [
+  { label: "All", value: "" },
+  { label: "Remote", value: "remote" },
+  { label: "India", value: "india" },
+];
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [resumeText, setResumeText] = useState("");
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
+  const [locationFilter, setLocationFilter] = useState("");
   // Starts true (not false) so ResumeForm never mounts with a stale empty
   // initialText before the fetch below resolves — its internal textarea
   // state only initializes once, from its first-render props.
@@ -59,22 +69,28 @@ export default function Home() {
     });
   }, [session]);
 
-  const stats = useMemo(() => {
-    if (matches.length === 0) return null;
+  const filteredMatches = useMemo(() => {
+    const needle = locationFilter.trim().toLowerCase();
+    if (!needle) return matches;
+    return matches.filter((m) => m.jobs?.location?.toLowerCase().includes(needle));
+  }, [matches, locationFilter]);
 
-    const avgFit = matches.reduce((sum, m) => sum + m.fit_score, 0) / matches.length;
-    const top = matches[0];
-    const companies = new Set(matches.map((m) => m.jobs?.company).filter(Boolean));
+  const stats = useMemo(() => {
+    if (filteredMatches.length === 0) return null;
+
+    const avgFit = filteredMatches.reduce((sum, m) => sum + m.fit_score, 0) / filteredMatches.length;
+    const top = filteredMatches[0];
+    const companies = new Set(filteredMatches.map((m) => m.jobs?.company).filter(Boolean));
 
     return {
-      count: matches.length,
+      count: filteredMatches.length,
       avgFit: Math.round(avgFit * 100),
       topFit: Math.round(top.fit_score * 100),
       topTitle: top.jobs?.title ?? "",
       topCompany: top.jobs?.company ?? "",
       companyCount: companies.size,
     };
-  }, [matches]);
+  }, [filteredMatches]);
 
   if (loadingSession) {
     return <main className="container center-page">Loading...</main>;
@@ -133,8 +149,46 @@ export default function Home() {
       )}
 
       <div className="card">
-        <h2 style={{ marginBottom: "1rem" }}>Your shortlist</h2>
-        {loadingData ? <p className="hint">Loading matches...</p> : <MatchesTable matches={matches} />}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+            marginBottom: "1rem",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>Your shortlist</h2>
+          {matches.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              {LOCATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={locationFilter === preset.value ? "primary" : "ghost"}
+                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  onClick={() => setLocationFilter(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <input
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                placeholder="Filter by location..."
+                style={{ width: 180, padding: "0.3rem 0.6rem", fontSize: "0.8125rem" }}
+              />
+            </div>
+          )}
+        </div>
+        {loadingData ? (
+          <p className="hint">Loading matches...</p>
+        ) : matches.length > 0 && filteredMatches.length === 0 ? (
+          <p className="empty-state">No matches for "{locationFilter}". Try a different location or clear the filter.</p>
+        ) : (
+          <MatchesTable matches={filteredMatches} />
+        )}
       </div>
     </main>
   );
