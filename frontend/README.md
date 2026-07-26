@@ -48,11 +48,21 @@ npm run dev
   100k-tokens/day budget with `match.py`'s scoring runs (same Groq account),
   so on a 429 it automatically retries once with the fallback key instead
   of failing the draft.
+- **Status actions**: "Mark applied" / "Dismiss" (and "Undo" / "Restore")
+  per row, writing straight to `matches.status` — no new endpoint, RLS
+  already scopes the update to the caller's own row. Dismissed matches drop
+  out of the visible list, the stat tiles, and average-fit math by default;
+  a "Show dismissed (N)" toggle brings them back, grayed out. Updates are
+  optimistic (local state first, Supabase write after) so the UI never
+  waits on a round-trip for a click this small.
+- **Search + sort**: a free-text box matches against job title or company
+  (separate from the location filter), and a sort control reorders by best
+  fit (default), company, or most recent posting.
+- Skeleton loading states (stat tiles, resume card, table rows) instead of
+  plain "Loading..." text, a sticky table header, and row-hover highlighting.
 
 ## What's not here (yet)
 
-- Marking a match as applied/dismissed (the `matches.status` column exists,
-  nothing in the UI writes to it yet).
 - Server-side rendering / auth cookies — this is a client-only skeleton using
   the browser Supabase client directly.
 

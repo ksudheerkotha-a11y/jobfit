@@ -1,8 +1,11 @@
+export type MatchStatus = "new" | "applied" | "dismissed";
+
 export type MatchedJobRow = {
+  job_id: string;
   fit_score: number;
   missing_skills: string[];
   reasons: string[];
-  status: string;
+  status: MatchStatus;
   jobs: {
     title: string;
     company: string;
