@@ -2,8 +2,8 @@ name: jobfit ingest + match
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # every 6 hours
-  workflow_dispatch: {}     # manual "Run workflow" button in the Actions tab
+    - cron: "0 */12 * * *"   # every 12 hours — see the match step below for why
+  workflow_dispatch: {}      # manual "Run workflow" button in the Actions tab
 
 jobs:
   ingest-and-match:
@@ -32,6 +32,8 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         # --scorer groq: free-tier semantic scoring (see README's "Better
-        # scoring"). prefilter-top keeps this well under Groq's daily
-        # request/token limits regardless of how many jobs/users this grows to.
-        run: python match.py --scorer groq --config config.yaml --min-fit 0.35 --top 30 --prefilter-top 100
+        # scoring"). Groq's free tier is 100k tokens/day *total*, shared with
+        # any interactive use of the same key — prefilter-top 20 costs ~1/5
+        # of that per run, leaving headroom for manual testing and for this
+        # to scale to a few more users before the budget becomes the bottleneck.
+        run: python match.py --scorer groq --config config.yaml --min-fit 0.35 --top 30 --prefilter-top 20

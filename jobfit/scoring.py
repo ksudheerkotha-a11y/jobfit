@@ -36,6 +36,20 @@ class Scorer(Protocol):
     def score(self, resume_text: str, job: Job) -> ScoreResult: ...
 
 
+# Free-tier LLM budgets are measured in tokens, not just requests — a raw
+# Greenhouse/Lever description is often multi-KB of HTML that costs tokens
+# without adding scoring signal. Strip it and cap length before it hits a
+# prompt.
+_MAX_JD_CHARS = 3000
+_MAX_RESUME_CHARS = 4000
+
+
+def _clean_for_prompt(text: str, max_chars: int) -> str:
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_chars]
+
+
 def _find_skills(text: str, skills: list[str]) -> set[str]:
     text_l = text.lower()
     found = set()
@@ -117,14 +131,14 @@ class ClaudeScorer:
 
     def score(self, resume_text: str, job: Job) -> ScoreResult:
         prompt = _FIT_PROMPT.format(
-            resume=resume_text.strip(),
+            resume=_clean_for_prompt(resume_text, _MAX_RESUME_CHARS),
             title=job.title,
             company=job.company,
-            jd=job.description.strip(),
+            jd=_clean_for_prompt(job.description, _MAX_JD_CHARS),
         )
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=1024,
+            max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(
@@ -174,14 +188,14 @@ class GroqScorer:
         self._wait_for_rate_limit()
 
         prompt = _FIT_PROMPT.format(
-            resume=resume_text.strip(),
+            resume=_clean_for_prompt(resume_text, _MAX_RESUME_CHARS),
             title=job.title,
             company=job.company,
-            jd=job.description.strip(),
+            jd=_clean_for_prompt(job.description, _MAX_JD_CHARS),
         )
         response = self.client.chat.completions.create(
             model=self.model,
-            max_tokens=1024,
+            max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
