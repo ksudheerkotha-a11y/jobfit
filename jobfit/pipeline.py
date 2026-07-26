@@ -3,12 +3,44 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 
 from jobfit.filters import dedupe, drop_ghosts, drop_stale, gate_on_fit
 from jobfit.models import Job, MatchedJob
 from jobfit.scoring import LocalScorer, Scorer
 
 logger = logging.getLogger(__name__)
+
+
+def _diversified_prefilter(
+    jobs: list[Job], resume_text: str, local: LocalScorer, top_n: int
+) -> list[Job]:
+    """Rank each company's jobs locally, then round-robin across companies
+    (best-from-each, then second-best-from-each, ...) instead of a pure
+    global top-N. A single company's postings scoring unusually well on the
+    free local scorer shouldn't be able to crowd every other company's
+    genuinely good roles out of the (expensive) LLM-scoring pass — with a
+    broad, cross-domain company list this isn't a corner case, it's routine."""
+    by_company: dict[str, list[tuple[float, Job]]] = defaultdict(list)
+    for job in jobs:
+        by_company[job.company].append((local.score(resume_text, job).fit_score, job))
+    for bucket in by_company.values():
+        bucket.sort(key=lambda pair: pair[0], reverse=True)
+
+    selected: list[Job] = []
+    round_idx = 0
+    while len(selected) < top_n:
+        added = False
+        for bucket in by_company.values():
+            if round_idx < len(bucket):
+                selected.append(bucket[round_idx][1])
+                added = True
+                if len(selected) >= top_n:
+                    break
+        if not added:
+            break
+        round_idx += 1
+    return selected
 
 
 def run_pipeline(
@@ -27,9 +59,11 @@ def run_pipeline(
 
     prefilter_top: when scorer is an LLM (one API call per job), scoring
     every job in a real config is slow, costly, and can blow through
-    free-tier rate limits. If set, jobs are first ranked with the free
-    LocalScorer and narrowed to the top N before the real `scorer` runs —
-    so it only ever sees the candidates worth spending an API call on.
+    free-tier rate limits. If set, jobs are first ranked per-company with
+    the free LocalScorer and narrowed to the top N via round-robin across
+    companies (see _diversified_prefilter) — so it only ever sees the
+    candidates worth spending an API call on, without one company's
+    postings crowding out every other company's.
 
     skills: passed to the prefilter's LocalScorer (config.yaml's `skills:`
     list, if the caller has one) so pre-filtering uses the same skill
@@ -44,9 +78,7 @@ def run_pipeline(
 
     if prefilter_top is not None and len(filtered) > prefilter_top:
         local = LocalScorer(skills=skills)
-        filtered = sorted(
-            filtered, key=lambda job: local.score(resume_text, job).fit_score, reverse=True
-        )[:prefilter_top]
+        filtered = _diversified_prefilter(filtered, resume_text, local, prefilter_top)
 
     # An LLM scorer is one network call per job — occasional bad output or a
     # transient failure shouldn't discard every match already scored in this

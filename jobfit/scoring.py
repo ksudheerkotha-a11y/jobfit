@@ -18,10 +18,13 @@ limits or run needlessly slowly/expensively.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Protocol
 
 from jobfit.models import Job, ScoreResult
+
+logger = logging.getLogger(__name__)
 
 # Reasonable generic default if a config doesn't supply its own `skills:` list.
 DEFAULT_SKILLS = [
@@ -160,19 +163,39 @@ class GroqScorer:
     that (rather than firing as fast as possible and relying on 429 retries)
     is both faster in practice and avoids hammering the API with requests
     that are just going to be rejected.
+
+    A second key (env var GROQ_API_KEY_FALLBACK) is optional. Each key's
+    100k-tokens/day cap is tracked separately by Groq, so once the primary
+    is exhausted mid-run, switching to the fallback for the rest of the run
+    is a real ~2x budget increase rather than hitting the same wall twice.
     """
 
     MIN_INTERVAL_SECONDS = 2.1  # ~28.5 req/min, just under the 30 RPM cap
 
-    def __init__(self, model: str = "llama-3.3-70b-versatile", client=None):
+    def __init__(self, model: str = "llama-3.3-70b-versatile", client=None, fallback_client=None):
         if client is not None:
             self.client = client
         else:
             from groq import Groq
 
             self.client = Groq()
+
+        if fallback_client is not None:
+            self.fallback_client = fallback_client
+        else:
+            import os
+
+            fallback_key = os.environ.get("GROQ_API_KEY_FALLBACK")
+            if fallback_key:
+                from groq import Groq
+
+                self.fallback_client = Groq(api_key=fallback_key)
+            else:
+                self.fallback_client = None
+
         self.model = model
         self._last_call_at: float | None = None
+        self._using_fallback = False
 
     def _wait_for_rate_limit(self) -> None:
         import time
@@ -193,18 +216,45 @@ class GroqScorer:
             company=job.company,
             jd=_clean_for_prompt(job.description, _MAX_JD_CHARS),
         )
-        response = self.client.chat.completions.create(
-            model=self.model,
-            max_tokens=500,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-        )
+
+        try:
+            response = self._active_client().chat.completions.create(
+                model=self.model,
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+        except Exception as exc:
+            if self._should_fall_back(exc):
+                logger.warning("Primary Groq key hit its daily budget — switching to fallback key")
+                self._using_fallback = True
+                response = self._active_client().chat.completions.create(
+                    model=self.model,
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                )
+            else:
+                raise
+
         text = response.choices[0].message.content or ""
         data = _extract_json(text)
         return ScoreResult(
             fit_score=float(data.get("fit_score", 0.0)),
             missing_skills=list(data.get("missing_skills", [])),
             reasons=list(data.get("reasons", [])),
+        )
+
+    def _active_client(self):
+        return self.fallback_client if self._using_fallback else self.client
+
+    def _should_fall_back(self, exc: Exception) -> bool:
+        from groq import RateLimitError
+
+        return (
+            isinstance(exc, RateLimitError)
+            and not self._using_fallback
+            and self.fallback_client is not None
         )
 
 

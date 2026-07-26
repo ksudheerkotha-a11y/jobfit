@@ -31,9 +31,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_API_KEY_FALLBACK: ${{ secrets.GROQ_API_KEY_FALLBACK }}
         # --scorer groq: free-tier semantic scoring (see README's "Better
         # scoring"). Groq's free tier is 100k tokens/day *total*, shared with
         # any interactive use of the same key — prefilter-top 20 costs ~1/5
-        # of that per run, leaving headroom for manual testing and for this
-        # to scale to a few more users before the budget becomes the bottleneck.
+        # of that per run, leaving headroom for manual testing. GROQ_API_KEY_FALLBACK
+        # is optional: if set, GroqScorer switches to it automatically once the
+        # primary key's daily budget runs out (see jobfit/scoring.py).
         run: python match.py --scorer groq --config config.yaml --min-fit 0.35 --top 30 --prefilter-top 20
