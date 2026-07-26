@@ -19,6 +19,7 @@ def run_pipeline(
     max_age_days: int | None = None,
     top: int | None = None,
     prefilter_top: int | None = None,
+    skills: list[str] | None = None,
 ) -> list[MatchedJob]:
     """Run the full filter -> score -> gate -> rank pipeline over already-fetched
     jobs. Fetching is kept separate (see jobfit.sources.fetch_all) so this
@@ -29,6 +30,11 @@ def run_pipeline(
     free-tier rate limits. If set, jobs are first ranked with the free
     LocalScorer and narrowed to the top N before the real `scorer` runs —
     so it only ever sees the candidates worth spending an API call on.
+
+    skills: passed to the prefilter's LocalScorer (config.yaml's `skills:`
+    list, if the caller has one) so pre-filtering uses the same skill
+    vocabulary as an explicit --scorer local run, rather than always
+    falling back to the generic default list.
     """
     filtered = jobs
     if max_age_days is not None:
@@ -37,7 +43,7 @@ def run_pipeline(
     filtered = dedupe(filtered)
 
     if prefilter_top is not None and len(filtered) > prefilter_top:
-        local = LocalScorer()
+        local = LocalScorer(skills=skills)
         filtered = sorted(
             filtered, key=lambda job: local.score(resume_text, job).fit_score, reverse=True
         )[:prefilter_top]

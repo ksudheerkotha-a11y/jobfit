@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install supabase
+          pip install supabase groq
 
       - name: Fetch + filter live boards -> Supabase `jobs`
         env:
@@ -30,5 +30,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python match.py --scorer local
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        # --scorer groq: free-tier semantic scoring (see README's "Better
+        # scoring"). prefilter-top keeps this well under Groq's daily
+        # request/token limits regardless of how many jobs/users this grows to.
+        run: python match.py --scorer groq --config config.yaml --min-fit 0.35 --top 30 --prefilter-top 100

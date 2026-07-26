@@ -1,13 +1,23 @@
-# Curated for Customer Success / SaaS / Conversational-AI roles.
-# Verified live on 2026-07-26 (each board actually had open postings, several
-# with Customer Success titles specifically):
+# Started curated for Customer Success/SaaS roles, then broadened (2026-07-26)
+# so the app is useful for anyone who signs up, not just one job search.
+# Verified live:
 #   - postman:   9 Customer Success Engineer roles, including APAC-specific ones
 #   - intercom:  12 Customer Success Manager / Account Manager roles
 #   - twilio:    25 India-located roles (several Remote - India), plus
 #                Technical Account Manager openings
+#   - spotify:   includes an India-specific role (Agency Development Manager)
+#   - stripe, airbnb, figma, vercel, datadog, discord, coinbase, databricks,
+#     cloudflare, anthropic: large, diverse boards spanning engineering,
+#     design, data, sales, marketing, finance, and more — not CS-specific
 #   - airtable, amplitude, pendo, mixpanel, braze, klaviyo, iterable,
 #     customerio, asana, outreach: SaaS companies with live CS/account-mgmt
 #     openings worth watching
+#
+# The actual fit judgement (--scorer claude/groq) reads the resume and JD
+# directly and doesn't depend on this being a complete skill taxonomy for
+# every field — the `skills:` list below only feeds the free local
+# pre-filter/fallback scorer, so it's deliberately broad rather than
+# exhaustive per-domain.
 #
 # Add more with:
 #   greenhouse token = the slug in boards.greenhouse.io/<token>
@@ -39,39 +49,80 @@ companies:
     token: asana
   - type: lever
     slug: outreach
+  - type: greenhouse
+    token: stripe
+  - type: greenhouse
+    token: airbnb
+  - type: greenhouse
+    token: figma
+  - type: greenhouse
+    token: vercel
+  - type: greenhouse
+    token: datadog
+  - type: greenhouse
+    token: discord
+  - type: greenhouse
+    token: coinbase
+  - type: greenhouse
+    token: databricks
+  - type: greenhouse
+    token: cloudflare
+  - type: greenhouse
+    token: anthropic
+  - type: lever
+    slug: spotify
 
-# Skill/keyword vocabulary tailored to a Customer Success / SaaS / GenAI
-# background (see fixtures/ for the generic backend-engineer example instead).
+# Broad, cross-domain skill/keyword vocabulary — Customer Success/SaaS terms
+# plus engineering, data, design, marketing, and sales terms — for the local
+# scorer's coverage heuristic. Not meant to be exhaustive for any one field.
 skills:
+  # Customer Success / SaaS
   - customer success
-  - customer success management
   - customer experience
   - onboarding
-  - adoption
   - churn
-  - churn prediction
   - retention
   - renewals
   - upsell
-  - expansion
-  - nps
-  - qbr
   - account management
-  - enterprise accounts
-  - client success
   - saas
   - b2b saas
+  - salesforce
+  - crm
+  # Engineering / data
+  - python
+  - javascript
+  - typescript
+  - react
+  - sql
+  - aws
+  - docker
+  - kubernetes
+  - rest api
+  - machine learning
+  - data pipeline
+  - data analytics
+  - dashboards
+  # Product / design
+  - product management
+  - product design
+  - user research
+  - figma
+  - roadmap
+  # Marketing / sales
+  - demand generation
+  - content marketing
+  - account executive
+  - business development
+  - go-to-market
+  - pipeline generation
+  # Finance / ops
+  - financial modeling
+  - forecasting
+  - operations
+  - stakeholder management
+  # AI / conversational
   - conversational ai
   - genai
+  - llm
   - whatsapp business platform
-  - salesforce
-  - zoho
-  - crm
-  - api integration
-  - rest api
-  - sql
-  - dashboards
-  - data analytics
-  - rbac
-  - multi-tenant
-  - stakeholder management

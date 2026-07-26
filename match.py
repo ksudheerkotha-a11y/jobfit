@@ -17,6 +17,7 @@ import argparse
 import logging
 from pathlib import Path
 
+from jobfit.config import load_config
 from jobfit.pipeline import run_pipeline
 from jobfit.resume import load_resume
 from jobfit.scoring import get_scorer
@@ -45,9 +46,17 @@ def main() -> None:
         default=str(DEMO_RESUME),
         help="Dry-run only: resume to score against (real runs read every row of `resumes`)",
     )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to config.yaml, for its `skills:` list (used by --scorer local and by "
+        "the claude/groq prefilter). Companies aren't needed here — jobs are already in "
+        "Supabase by the time match.py runs.",
+    )
     args = parser.parse_args()
 
-    scorer = get_scorer(args.scorer)
+    skills = load_config(args.config).get("skills") if args.config else None
+    scorer = get_scorer(args.scorer, skills=skills)
     prefilter_top = args.prefilter_top if args.scorer != "local" else None
     jobs = fetch_jobs()
     logging.info("Loaded %d jobs to score", len(jobs))
@@ -55,7 +64,8 @@ def main() -> None:
     if DRY_RUN:
         resume_text = load_resume(args.resume)
         matches = run_pipeline(
-            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top, prefilter_top=prefilter_top
+            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top,
+            prefilter_top=prefilter_top, skills=skills,
         )
         logging.info("[dry-run] %d matches for demo resume %s", len(matches), args.resume)
         upsert_matches(user_id="dry-run-user", matches=matches)
@@ -66,7 +76,8 @@ def main() -> None:
     for resume_row in resumes:
         resume_text = resume_row["resume_text"]
         matches = run_pipeline(
-            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top, prefilter_top=prefilter_top
+            jobs, resume_text, scorer, min_fit=args.min_fit, top=args.top,
+            prefilter_top=prefilter_top, skills=skills,
         )
         upsert_matches(user_id=resume_row["user_id"], matches=matches)
         logging.info("%d matches for user %s", len(matches), resume_row["user_id"])

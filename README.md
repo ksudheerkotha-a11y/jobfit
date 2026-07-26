@@ -98,7 +98,8 @@ Then for real, set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` and drop the flag.
 |---|---|
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | service_role key |
-| `ANTHROPIC_API_KEY` | only if you run `match.py --scorer claude` |
+| `GROQ_API_KEY` | free tier, no card required — console.groq.com (the default workflow uses `--scorer groq`) |
+| `ANTHROPIC_API_KEY` | only if you switch the workflow to `--scorer claude` |
 
 Trigger a first run from the Actions tab (*workflow_dispatch*) to populate Supabase.
 
