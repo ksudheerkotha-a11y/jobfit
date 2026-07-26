@@ -29,6 +29,21 @@ npm run dev
   match, companies represented), a fit-score meter and skill pills in the
   matches table, and a collapsible resume card. Colors and light/dark modes
   come from a validated palette (see `globals.css`).
+- A location filter above the shortlist (quick Remote/India presets + free
+  text, substring match against each job's location).
+- Resume upload: PDF (`pdfjs-dist`) and Word `.docx` (`mammoth`) are parsed
+  client-side into the textarea, no server round-trip; plain paste still
+  works too. Legacy binary `.doc` isn't supported.
+- **Draft-assist**: a "Draft cover letter" button per shortlisted job calls
+  `app/api/draft-cover-letter`, a server-side route (Vercel serverless
+  function) that uses Groq to draft a tailored letter from your resume +
+  that job's description. This is intentionally *not* auto-apply — the
+  draft is yours to review, edit, and paste in yourself; nothing gets
+  submitted anywhere automatically. The route verifies the caller's
+  Supabase session server-side before calling Groq, so the shared API key
+  can't be hit by anonymous requests. Needs `SUPABASE_SERVICE_KEY` and
+  `GROQ_API_KEY` set as **server-only** env vars (see `.env.example` —
+  no `NEXT_PUBLIC_` prefix, so they never reach the browser).
 
 ## What's not here (yet)
 
@@ -43,9 +58,11 @@ This app lives in `frontend/`, not the repo root, so when importing the repo
 on Vercel: set **Root Directory** to `frontend` (Settings → Build and
 Deployment → Root Directory) before the first deploy, or Vercel's
 auto-detection will find the Python engine at the repo root instead of this
-Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-as project environment variables. After deploying, add the production URL to
-your Supabase project's Authentication → URL Configuration (Site URL and
+Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_KEY`, and `GROQ_API_KEY` as project environment variables
+(the last two are server-only — draft-assist won't work without them, but
+everything else will). After deploying, add the production URL to your
+Supabase project's Authentication → URL Configuration (Site URL and
 Redirect URLs) or confirmation emails will redirect back to `localhost`.
 
 ## Auth email delivery

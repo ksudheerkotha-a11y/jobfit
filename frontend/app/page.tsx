@@ -60,7 +60,7 @@ export default function Home() {
         .maybeSingle(),
       supabase
         .from("matches")
-        .select("fit_score, missing_skills, reasons, status, jobs(title, company, location, apply_url, posted_at)")
+        .select("fit_score, missing_skills, reasons, status, jobs(title, company, location, apply_url, posted_at, description)")
         .order("fit_score", { ascending: false }),
     ]).then(([resumeRes, matchesRes]) => {
       setResumeText(resumeRes.data?.resume_text ?? "");
@@ -187,7 +187,7 @@ export default function Home() {
         ) : matches.length > 0 && filteredMatches.length === 0 ? (
           <p className="empty-state">No matches for "{locationFilter}". Try a different location or clear the filter.</p>
         ) : (
-          <MatchesTable matches={filteredMatches} />
+          <MatchesTable matches={filteredMatches} resumeText={resumeText} accessToken={session.access_token} />
         )}
       </div>
     </main>

@@ -9,5 +9,6 @@ export type MatchedJobRow = {
     location: string;
     apply_url: string;
     posted_at: string | null;
+    description: string;
   } | null;
 };
