@@ -19,9 +19,19 @@
 # pre-filter/fallback scorer, so it's deliberately broad rather than
 # exhaustive per-domain.
 #
+# Added 2026-07-27: Ashby + RemoteOK, prioritizing remote roles.
+#   - ramp, notion, linear, openai (Ashby): verified live, strong remote %
+#     (linear is 100% remote-flagged; openai has 483 of 753 remote-flagged)
+#     and genuine CS-titled roles (notion: 13, openai: 9, ramp: 4)
+#   - substack (Ashby): smaller board, included for variety
+#   - remoteok: a single global feed of remoteok.com's latest ~100 postings
+#     across all companies — remote by definition, no per-company config
+#
 # Add more with:
 #   greenhouse token = the slug in boards.greenhouse.io/<token>
 #   lever slug       = the slug in jobs.lever.co/<slug>
+#   ashby board      = the slug in jobs.ashbyhq.com/<board>
+#   remoteok         = no token needed, one global feed
 companies:
   - type: greenhouse
     token: postman
@@ -71,6 +81,17 @@ companies:
     token: anthropic
   - type: lever
     slug: spotify
+  - type: ashby
+    board: ramp
+  - type: ashby
+    board: notion
+  - type: ashby
+    board: linear
+  - type: ashby
+    board: openai
+  - type: ashby
+    board: substack
+  - type: remoteok
 
 # Broad, cross-domain skill/keyword vocabulary — Customer Success/SaaS terms
 # plus engineering, data, design, marketing, and sales terms — for the local

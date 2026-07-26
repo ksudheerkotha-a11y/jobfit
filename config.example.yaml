@@ -1,7 +1,11 @@
-# Curate 20-40 companies in your target space. Precision beats a huge list.
+# Curate 20-40 companies in your target space. Precision beats a huge list
+# (remoteok below is the one exception — it's a single global feed, not a
+# per-company board).
 #
 # Greenhouse token = the slug in boards.greenhouse.io/<token>
 # Lever slug       = the slug in jobs.lever.co/<slug>
+# Ashby board      = the slug in jobs.ashbyhq.com/<board>
+# remoteok         = no token needed, one global feed of remote postings
 companies:
   - type: greenhouse
     token: stripe
@@ -11,6 +15,9 @@ companies:
     slug: netflix
   - type: lever
     slug: figma
+  - type: ashby
+    board: ramp
+  - type: remoteok
 
 # Curated skill vocabulary the local scorer checks resume/JD overlap against.
 # Extend this with terms specific to your target roles.

@@ -6,9 +6,10 @@ resume, and returns a **short, ranked shortlist you actually fit** — instead o
 a spray list. The thesis: interview rate goes *up* when application volume goes
 *down* and targeting goes up.
 
-This is the clean, legal core (Greenhouse + Lever public JSON feeds — no auth,
-no scraping, no captcha). The brittle auto-apply plumbing is deliberately *not*
-here; prove the "fewer, better" thesis first.
+This is the clean, legal core (Greenhouse, Lever, Ashby, and RemoteOK public
+JSON feeds — no auth, no scraping, no captcha; see "A note on LinkedIn/Naukri/
+etc." below for why those aren't here). The brittle auto-apply plumbing is
+deliberately *not* here; prove the "fewer, better" thesis first.
 
 ## Quickstart
 
@@ -27,7 +28,7 @@ python -m jobfit run --resume your_resume.pdf --config config.yaml \
 ## How it works
 
 ```
-fetch (Greenhouse + Lever)  ->  drop stale  ->  drop ghost/low-signal
+fetch (Greenhouse, Lever, Ashby, RemoteOK)  ->  drop stale  ->  drop ghost/low-signal
      ->  dedupe  ->  score fit (resume x JD)  ->  gate on fit  ->  rank
 ```
 
@@ -46,21 +47,39 @@ which is exactly the input the later "tailor the resume" step needs.
 ## Getting board tokens
 
 There's no public directory. A Greenhouse token is the slug in
-`boards.greenhouse.io/<token>`; a Lever slug is in `jobs.lever.co/<slug>`. Curate
-20–40 companies in your target space — precision beats a huge list.
+`boards.greenhouse.io/<token>`; a Lever slug is in `jobs.lever.co/<slug>`; an
+Ashby board is the slug in `jobs.ashbyhq.com/<board>`. RemoteOK needs no
+token — it's one global feed (`type: remoteok`, no other keys) of the site's
+latest ~100 remote postings across every company on it, not a per-company
+board. Curate 20–40 companies in your target space — precision beats a huge
+list (RemoteOK is the one exception, by nature).
+
+## A note on LinkedIn / Naukri / IIMJobs / similar
+
+These don't expose a public job-search API the way Greenhouse/Lever/Ashby do
+— the only way to pull listings is scraping the site directly, which their
+Terms of Service explicitly prohibit (LinkedIn in particular has pursued this
+legally, e.g. the hiQ Labs case). That's a deliberate line this project
+doesn't cross; see the "clean, legal core" note up top.
 
 ## Extending
 
-- **More sources**: Ashby, Workable, Recruitee, and Personio also expose public
-  feeds. Add a `jobfit/sources/ashby.py` returning `Job` objects and register it
-  in `sources/__init__.py._FETCHERS`. Same shape, ~20 lines each.
+- **More sources**: Recruitee and Personio also expose public feeds; add a
+  `jobfit/sources/<name>.py` returning `Job` objects and register it in
+  `sources/__init__.py._FETCHERS` (same shape as `ashby.py`, ~20-40 lines).
+  Workable *used* to have a simple public widget API in this shape, but as
+  of 2026-07-27 it returned empty job lists for every real Workable customer
+  tested (Canva, Deliveroo, Typeform, and others) — either deprecated or
+  requiring auth this project doesn't have; worth re-checking before
+  assuming it's addable the same way.
 - **Better scoring**: `--scorer claude` (set `ANTHROPIC_API_KEY`, `pip install
   anthropic`) or `--scorer groq` (set `GROQ_API_KEY`, `pip install groq` — a
   free tier with no card required, at console.groq.com) for genuine semantic
   judgement instead of keyword overlap. Either way, jobs are pre-narrowed to
-  the top `--prefilter-top` (default 100) by the free local scorer first, so
-  a real config doesn't burn through free-tier request limits or make
-  hundreds of API calls just to score the whole board.
+  the top `--prefilter-top` (default 20) by the free local scorer first, so
+  a real config doesn't burn through free-tier request *and token* limits —
+  Groq's free tier is 100k tokens/day, and a full-length JD + resume in every
+  prompt adds up fast across even a modest `--prefilter-top`.
 - **The next module (the real differentiator)**: a *human-path* step — check the
   user's own network for a connection at each shortlisted company and draft the
   referral ask. A warm intro is worth 4–10x a cold apply; that's the wedge.
