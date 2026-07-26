@@ -66,7 +66,7 @@ def _print_preview(label: str, rows: list[dict]) -> None:
         print(f"... and {len(rows) - len(preview)} more")
 
 
-def upsert_jobs(jobs: list[Job]) -> None:
+def upsert_jobs(jobs: list[Job], batch_size: int = 200) -> None:
     rows = [_job_to_row(j) for j in jobs]
     if DRY_RUN:
         _print_preview("jobs", rows)
@@ -74,7 +74,12 @@ def upsert_jobs(jobs: list[Job]) -> None:
         print(f"[dry-run] cached full payload to {DRY_RUN_JOBS_CACHE} for match.py to read")
         return
 
-    _client().table("jobs").upsert(rows).execute()
+    # A single upsert covering thousands of rows (each with a multi-KB HTML
+    # description) can exceed Supabase's free-tier statement timeout — same
+    # class of issue as fetch_jobs()'s pagination, on the write side.
+    client = _client()
+    for i in range(0, len(rows), batch_size):
+        client.table("jobs").upsert(rows[i : i + batch_size]).execute()
 
 
 def fetch_jobs() -> list[Job]:
