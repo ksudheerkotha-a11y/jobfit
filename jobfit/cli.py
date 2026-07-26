@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--prefilter-top",
         type=int,
-        default=20,
+        default=32,
         help="For claude/groq scorers: only send the top N local-scored jobs to the API "
         "(ignored for --scorer local). Groq's free tier caps at 100k tokens/day, not "
         "just requests — each call costs a few thousand tokens, so keep this modest.",
