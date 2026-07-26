@@ -88,7 +88,11 @@ def fetch_jobs() -> list[Job]:
             )
         rows = json.loads(DRY_RUN_JOBS_CACHE.read_text())
     else:
-        rows = _fetch_all_rows("jobs")
+        # jobs.description holds full (often multi-KB HTML) job text, so a
+        # 1000-row page can be large enough to hit Supabase's default
+        # statement timeout on the free tier — a smaller page keeps each
+        # request comfortably under it.
+        rows = _fetch_all_rows("jobs", page_size=200)
 
     return [_row_to_job(row) for row in rows]
 
