@@ -3,23 +3,39 @@
 import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { Logomark } from "@/components/icons";
+import { Logomark, SparkleIcon } from "@/components/icons";
 import { NotificationBell } from "@/components/NotificationBell";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/analytics", label: "Analytics" },
+  { href: "/jobs", label: "Browse jobs" },
+  { href: "/tracker", label: "Tracker" },
   { href: "/interviews", label: "Interviews" },
+  { href: "/networking", label: "Networking" },
+  { href: "/resume", label: "Resume" },
+  { href: "/analytics", label: "Analytics" },
 ] as const;
 
-export function AppHeader({ session, active }: { session: Session; active: "/" | "/analytics" | "/interviews" }) {
+export type ActiveRoute = (typeof NAV_LINKS)[number]["href"];
+
+export function AppHeader({ session, active }: { session: Session; active: ActiveRoute }) {
   return (
     <header className="app-header">
-      <div className="brand brand-row">
-        <Logomark size={36} />
-        <div>
-          <h1>jobfit</h1>
-          <p className="tagline">Executive shortlist</p>
+      <div className="app-header-top">
+        <div className="brand brand-row">
+          <Logomark size={32} />
+          <h1 style={{ fontSize: "1.1rem" }}>jobfit</h1>
+          <span className="badge badge-accent icon-btn" style={{ padding: "0.2rem 0.6rem" }}>
+            <SparkleIcon size={11} />
+            AI
+          </span>
+        </div>
+        <div className="header-actions">
+          <NotificationBell session={session} />
+          <span className="user-email">{session.user.email}</span>
+          <button className="ghost" onClick={() => supabase.auth.signOut()}>
+            Sign out
+          </button>
         </div>
       </div>
       <nav className="app-nav">
@@ -29,13 +45,6 @@ export function AppHeader({ session, active }: { session: Session; active: "/" |
           </Link>
         ))}
       </nav>
-      <div className="header-actions">
-        <NotificationBell session={session} />
-        <span className="user-email">{session.user.email}</span>
-        <button className="ghost" onClick={() => supabase.auth.signOut()}>
-          Sign out
-        </button>
-      </div>
     </header>
   );
 }

@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { APPLIED_STATUSES, Contact, Interview, JobRow, MATCHES_SELECT, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
-import Link from "next/link";
+import { APPLIED_STATUSES, Interview, MATCHES_SELECT, MatchedJobRow, MatchStatus } from "@/lib/types";
+import { relativeTime } from "@/lib/activityDescribe";
+import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
-import { ResumeCenter } from "@/components/ResumeCenter";
-import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
-import { ContactsManager } from "@/components/ContactsManager";
 import {
   ActivityIcon,
   BellIcon,
@@ -18,128 +17,55 @@ import {
   CheckCircleIcon,
   ListIcon,
   Logomark,
-  SearchIcon,
   SparkleIcon,
   TargetIcon,
   TrendingUpIcon,
   TrophyIcon,
 } from "@/components/icons";
-import { BrowseMatches } from "@/components/BrowseMatches";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
-import { logActivity } from "@/lib/logActivity";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { ApplicationsChart } from "@/components/ApplicationsChart";
-import { JobSearch } from "@/components/JobSearch";
-import { SavedJobs } from "@/components/SavedJobs";
-import { KanbanBoard } from "@/components/KanbanBoard";
 
-// This page is inherently per-user (auth session, resume, matches) — never
-// static. Also avoids the Supabase client being constructed at build time,
-// when real env vars aren't necessarily present yet.
+// This page is inherently per-user (auth session, matches) — never static.
 export const dynamic = "force-dynamic";
 
-// Quick presets on top of the free-text location filter — substring match
-// against the job's location string, so e.g. "Remote" also catches
-// "Raleigh, NC / EST Remote".
-const LOCATION_PRESETS = [
-  { label: "All", value: "" },
-  { label: "Remote", value: "remote" },
-  { label: "India", value: "india" },
-];
-
-const SORT_OPTIONS = [
-  { label: "Best fit", value: "fit" },
-  { label: "Company", value: "company" },
-  { label: "Most recent", value: "recent" },
-] as const;
-
-type SortValue = (typeof SORT_OPTIONS)[number]["value"];
-
-const SAVED_JOBS_SELECT =
-  "id, job_id, created_at, jobs(id, title, company, location, description, apply_url, posted_at)";
+const TOP_MATCHES_COUNT = 5;
+const CARD_TINTS = ["match-card-tint-0", "match-card-tint-1", "match-card-tint-2", "match-card-tint-3", "match-card-tint-4"];
 
 export default function Home() {
   const { session, loadingSession } = useSession();
-  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([]);
-  const [locationFilter, setLocationFilter] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortValue>("fit");
-  const [showDismissed, setShowDismissed] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "board">("table");
   // Starts true (not false) so the dashboard renders its loading skeleton
   // rather than an empty state before the fetch below resolves.
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!session) return;
-
     setLoadingData(true);
 
     Promise.all([
-      supabase.from("resumes").select("resume_text").eq("user_id", session.user.id).maybeSingle(),
-      supabase.from("resume_versions").select("*").order("created_at", { ascending: false }),
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
-      supabase.from("contacts").select("id, name, company, context").order("name"),
-      supabase.from("saved_jobs").select(SAVED_JOBS_SELECT).order("created_at", { ascending: false }),
       supabase
         .from("interviews")
         .select("*")
         .gte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: true })
         .limit(3),
-    ]).then(async ([legacyResumeRes, versionsRes, matchesRes, contactsRes, savedJobsRes, interviewsRes]) => {
-      let versions = (versionsRes.data as ResumeVersion[]) ?? [];
-
-      // One-time backfill: users from before Phase 5 have their resume only
-      // in the legacy `resumes` table. Give them a matching default version
-      // instead of starting the Resume Center empty.
-      const legacyText = legacyResumeRes.data?.resume_text ?? "";
-      if (versions.length === 0 && legacyText.trim()) {
-        const { data: migrated } = await supabase
-          .from("resume_versions")
-          .insert({ user_id: session.user.id, title: "My resume", resume_text: legacyText, is_default: true })
-          .select("*")
-          .single();
-        if (migrated) versions = [migrated as ResumeVersion];
-      }
-
-      setResumeVersions(versions);
+    ]).then(([matchesRes, interviewsRes]) => {
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
-      setContacts((contactsRes.data as Contact[]) ?? []);
-      setSavedJobs((savedJobsRes.data as unknown as SavedJob[]) ?? []);
       setUpcomingInterviews((interviewsRes.data as Interview[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
 
-  // The legacy `resumes` table is what the Python matcher still reads —
-  // keep it mirrored to whichever version is default so scoring never
-  // requires touching the ingestion pipeline (see README / Phase 1 decision).
-  async function syncLegacyResume(text: string) {
-    if (!session) return;
-    await supabase
-      .from("resumes")
-      .upsert({ user_id: session.user.id, resume_text: text, updated_at: new Date().toISOString() });
-  }
-
   async function handleStatusChange(jobId: string, status: MatchStatus) {
     if (!session) return;
-
     const existing = matches.find((m) => m.job_id === jobId);
-    // applied_at is set once, the first time a match leaves "new" — later
-    // status changes (phone_screen, onsite, ...) don't reset the clock,
-    // since the follow-up nudge should track "days since you applied," not
-    // "days since the last status change."
     const appliedAt =
       existing?.applied_at ?? (APPLIED_STATUSES.includes(status) ? new Date().toISOString() : null);
 
-    setMatches((prev) =>
-      prev.map((m) => (m.job_id === jobId ? { ...m, status, applied_at: appliedAt } : m))
-    );
+    setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, status, applied_at: appliedAt } : m)));
 
     await supabase
       .from("matches")
@@ -157,122 +83,6 @@ export default function Home() {
     }
   }
 
-  async function handleNotesChange(jobId: string, notes: string) {
-    if (!session) return;
-    setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, notes } : m)));
-    await supabase.from("matches").update({ notes }).eq("job_id", jobId).eq("user_id", session.user.id);
-
-    const job = matches.find((m) => m.job_id === jobId);
-    logActivity(session.user.id, "application", jobId, "note_added", {
-      company: job?.jobs?.company,
-      title: job?.jobs?.title,
-    });
-  }
-
-  function handleSaveToggle(jobId: string, job: JobRow, saved: boolean) {
-    if (saved) {
-      setSavedJobs((prev) => [
-        { id: Date.now(), job_id: jobId, created_at: new Date().toISOString(), jobs: job },
-        ...prev,
-      ]);
-    } else {
-      setSavedJobs((prev) => prev.filter((s) => s.job_id !== jobId));
-    }
-  }
-
-  function handleUnsave(jobId: string) {
-    setSavedJobs((prev) => prev.filter((s) => s.job_id !== jobId));
-  }
-
-  const defaultResumeVersion = useMemo(
-    () => resumeVersions.find((v) => v.is_default),
-    [resumeVersions]
-  );
-  const resumeText = defaultResumeVersion?.resume_text ?? "";
-
-  async function handleAddResumeVersion(title: string, text: string) {
-    if (!session) return;
-    const makeDefault = resumeVersions.length === 0;
-    const { data, error } = await supabase
-      .from("resume_versions")
-      .insert({ user_id: session.user.id, title, resume_text: text, is_default: makeDefault })
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-
-    const inserted = data as ResumeVersion;
-    setResumeVersions((prev) => [inserted, ...prev]);
-    if (makeDefault) await syncLegacyResume(text);
-    logActivity(session.user.id, "resume", String(inserted.id), "resume_version_added", { title });
-  }
-
-  async function handleSetDefaultResumeVersion(id: number) {
-    if (!session) return;
-    const target = resumeVersions.find((v) => v.id === id);
-    if (!target || target.is_default) return;
-
-    await supabase.from("resume_versions").update({ is_default: false }).eq("user_id", session.user.id).eq("is_default", true);
-    await supabase.from("resume_versions").update({ is_default: true }).eq("id", id);
-
-    setResumeVersions((prev) => prev.map((v) => ({ ...v, is_default: v.id === id })));
-    await syncLegacyResume(target.resume_text);
-    logActivity(session.user.id, "resume", String(id), "resume_version_set_default", { title: target.title });
-  }
-
-  async function handleUpdateResumeVersion(id: number, text: string) {
-    if (!session) return;
-    const target = resumeVersions.find((v) => v.id === id);
-    await supabase.from("resume_versions").update({ resume_text: text }).eq("id", id);
-    setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, resume_text: text } : v)));
-    if (target?.is_default) await syncLegacyResume(text);
-    logActivity(session.user.id, "resume", String(id), "resume_updated", {});
-  }
-
-  async function handleDeleteResumeVersion(id: number) {
-    if (!session) return;
-    const target = resumeVersions.find((v) => v.id === id);
-    if (!target || target.is_default || resumeVersions.length <= 1) return;
-
-    await supabase.from("resume_versions").delete().eq("id", id);
-    setResumeVersions((prev) => prev.filter((v) => v.id !== id));
-    logActivity(session.user.id, "resume", String(id), "resume_version_deleted", { title: target.title });
-  }
-
-  async function handleAnalyzeResumeVersion(id: number, atsScore: number, keywords: string[]) {
-    if (!session) return;
-    await supabase.from("resume_versions").update({ ats_score: atsScore, keywords }).eq("id", id);
-    setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ats_score: atsScore, keywords } : v)));
-    const target = resumeVersions.find((v) => v.id === id);
-    logActivity(session.user.id, "resume", String(id), "resume_analyzed", { title: target?.title, atsScore });
-  }
-
-  async function handleSaveTailoredResume(text: string, jobTitle: string, company: string) {
-    if (!session) return;
-    const title = `Tailored — ${jobTitle} @ ${company}`;
-    const { data, error } = await supabase
-      .from("resume_versions")
-      .insert({
-        user_id: session.user.id,
-        title,
-        resume_text: text,
-        source_resume_id: defaultResumeVersion?.id ?? null,
-        is_default: false,
-      })
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-
-    setResumeVersions((prev) => [data as ResumeVersion, ...prev]);
-    logActivity(session.user.id, "resume", String((data as ResumeVersion).id), "resume_version_added", {
-      title,
-      tailored: true,
-    });
-  }
-
-  const savedJobIds = useMemo(() => new Set(savedJobs.map((s) => s.job_id)), [savedJobs]);
-
-  const dismissedCount = useMemo(() => matches.filter((m) => m.status === "dismissed").length, [matches]);
-
   const followUpCount = useMemo(
     () =>
       matches.filter(
@@ -284,33 +94,14 @@ export default function Home() {
     [matches]
   );
 
-  const visibleMatches = useMemo(() => {
-    let result = showDismissed ? matches : matches.filter((m) => m.status !== "dismissed");
-
-    const needle = locationFilter.trim().toLowerCase();
-    if (needle) {
-      result = result.filter((m) => m.jobs?.location?.toLowerCase().includes(needle));
-    }
-
-    const query = search.trim().toLowerCase();
-    if (query) {
-      result = result.filter(
-        (m) =>
-          m.jobs?.title?.toLowerCase().includes(query) ||
-          m.jobs?.company?.toLowerCase().includes(query)
-      );
-    }
-
-    const sorted = [...result];
-    if (sortBy === "company") {
-      sorted.sort((a, b) => (a.jobs?.company ?? "").localeCompare(b.jobs?.company ?? ""));
-    } else if (sortBy === "recent") {
-      sorted.sort((a, b) => (b.jobs?.posted_at ?? "").localeCompare(a.jobs?.posted_at ?? ""));
-    } else {
-      sorted.sort((a, b) => b.fit_score - a.fit_score);
-    }
-    return sorted;
-  }, [matches, locationFilter, search, sortBy, showDismissed]);
+  const topMatches = useMemo(
+    () =>
+      matches
+        .filter((m) => m.status !== "dismissed")
+        .sort((a, b) => b.fit_score - a.fit_score)
+        .slice(0, TOP_MATCHES_COUNT),
+    [matches]
+  );
 
   const stats = useMemo(() => {
     const active = matches.filter((m) => m.status !== "dismissed");
@@ -338,9 +129,6 @@ export default function Home() {
     const thisWeek = applied.filter((m) => m.applied_at && new Date(m.applied_at).getTime() >= weekAgo);
     const activeInterviews = matches.filter((m) => m.status === "phone_screen" || m.status === "onsite");
     const offers = matches.filter((m) => m.status === "offer");
-    // Of everything applied, the share that moved past the initial "applied"
-    // stage — the closest real signal to "did someone respond" without a
-    // dedicated recruiter-reply concept yet.
     const progressed = applied.filter((m) => m.status !== "applied");
     const responseRate = applied.length > 0 ? Math.round((progressed.length / applied.length) * 100) : 0;
 
@@ -512,148 +300,68 @@ export default function Home() {
         </div>
       )}
 
+      <div className="card">
+        <div className="card-header-static">
+          <h2 style={{ margin: 0 }}>Top job matches</h2>
+          <Link href="/jobs" className="icon-link">
+            Browse jobs →
+          </Link>
+        </div>
+        {loadingData ? (
+          <div className="skeleton-table" style={{ marginTop: "0.85rem" }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div className="skeleton-row" key={i} />
+            ))}
+          </div>
+        ) : topMatches.length === 0 ? (
+          <p className="empty-state">
+            No matches yet — add a resume in the Resume tab and the next scheduled match run will
+            populate this.
+          </p>
+        ) : (
+          <div className="top-matches-row" style={{ marginTop: "0.85rem" }}>
+            {topMatches.map((m, i) => {
+              const pct = Math.round(m.fit_score * 100);
+              return (
+                <div key={m.job_id} className={`match-card ${CARD_TINTS[i % CARD_TINTS.length]}`}>
+                  <div className="match-card-top">
+                    <span className="match-card-posted">
+                      {m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
+                    </span>
+                    <span
+                      className="match-ring"
+                      style={{ background: `conic-gradient(var(--text-primary) ${pct}%, color-mix(in srgb, var(--text-primary) 14%, transparent) 0)` }}
+                    >
+                      <span className="match-ring-value">{pct}%</span>
+                    </span>
+                  </div>
+                  <p className="match-card-title">{m.jobs?.title}</p>
+                  <div className="match-card-bottom">
+                    <div className="match-card-company">
+                      <span>{m.jobs?.company}</span>
+                    </div>
+                    <div className="match-card-actions">
+                      <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
+                        Pass
+                      </button>
+                      {m.jobs?.apply_url && (
+                        <a className="primary" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
+                          Apply
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {!loadingData && matches.length > 0 && (
         <>
           <ApplicationsChart matches={matches} />
           <ActivityFeed userId={session.user.id} />
-        </>
-      )}
-
-      {loadingData ? (
-        <div className="card">
-          <div className="skeleton-line" style={{ width: "40%" }} />
-          <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
-        </div>
-      ) : (
-        <ResumeCenter
-          accessToken={session.access_token}
-          versions={resumeVersions}
-          onAdd={handleAddResumeVersion}
-          onSetDefault={handleSetDefaultResumeVersion}
-          onUpdate={handleUpdateResumeVersion}
-          onDelete={handleDeleteResumeVersion}
-          onAnalyzed={handleAnalyzeResumeVersion}
-        />
-      )}
-
-      {!loadingData && (
-        <ContactsManager userId={session.user.id} contacts={contacts} onContactsChange={setContacts} />
-      )}
-
-      <div className="card">
-        <div className="shortlist-toolbar">
-          <h2 style={{ margin: 0 }}>Your shortlist</h2>
-          {matches.length > 0 && (
-            <div className="toolbar-controls">
-              <div className="preset-group">
-                <button
-                  type="button"
-                  className={viewMode === "table" ? "primary" : "ghost"}
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
-                  onClick={() => setViewMode("table")}
-                >
-                  Table
-                </button>
-                <button
-                  type="button"
-                  className={viewMode === "board" ? "primary" : "ghost"}
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
-                  onClick={() => setViewMode("board")}
-                >
-                  Board
-                </button>
-              </div>
-              <div className="search-input-wrap">
-                <SearchIcon size={15} className="search-input-icon" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search role or company..."
-                  className="control-input search-input"
-                />
-              </div>
-              <div className="preset-group">
-                {LOCATION_PRESETS.map((preset) => (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    className={locationFilter === preset.value ? "primary" : "ghost"}
-                    style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
-                    onClick={() => setLocationFilter(preset.value)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-              <input
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                placeholder="Filter by location..."
-                className="control-input"
-                style={{ width: 160 }}
-              />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortValue)}
-                className="control-input"
-                style={{ width: 130 }}
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    Sort: {opt.label}
-                  </option>
-                ))}
-              </select>
-              {dismissedCount > 0 && (
-                <button
-                  type="button"
-                  className="ghost"
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
-                  onClick={() => setShowDismissed((v) => !v)}
-                >
-                  {showDismissed ? "Hide dismissed" : `Show dismissed (${dismissedCount})`}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        {loadingData ? (
-          <div className="skeleton-table">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div className="skeleton-row" key={i} />
-            ))}
-          </div>
-        ) : matches.length > 0 && visibleMatches.length === 0 ? (
-          <p className="empty-state">
-            No matches match your filters. Try a different search, location, or clear the filters.
-          </p>
-        ) : viewMode === "board" ? (
-          <KanbanBoard
-            matches={visibleMatches}
-            userId={session.user.id}
-            contacts={contacts}
-            onStatusChange={handleStatusChange}
-          />
-        ) : (
-          <MatchesTable
-            matches={visibleMatches}
-            resumeText={resumeText}
-            accessToken={session.access_token}
-            userId={session.user.id}
-            contacts={contacts}
-            onStatusChange={handleStatusChange}
-            onNotesChange={handleNotesChange}
-            onSaveTailoredResume={handleSaveTailoredResume}
-          />
-        )}
-      </div>
-
-      {!loadingData && <BrowseMatches resumeText={resumeText} accessToken={session.access_token} />}
-
-      {!loadingData && (
-        <>
-          <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
-          <SavedJobs userId={session.user.id} savedJobs={savedJobs} onUnsave={handleUnsave} />
         </>
       )}
     </main>
