@@ -40,6 +40,11 @@ export const APPLIED_STATUSES: MatchStatus[] = [
   "rejected",
 ];
 
+// Shared by every page that reads the shortlist (dashboard, analytics) so
+// the query shape can't drift between them.
+export const MATCHES_SELECT =
+  "job_id, fit_score, missing_skills, reasons, status, notes, applied_at, jobs(title, company, location, apply_url, posted_at, description)";
+
 export type MatchedJobRow = {
   job_id: string;
   fit_score: number;

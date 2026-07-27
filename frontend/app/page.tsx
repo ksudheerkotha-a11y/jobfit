@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { APPLIED_STATUSES, Contact, JobRow, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
+import { useSession } from "@/lib/useSession";
+import { APPLIED_STATUSES, Contact, JobRow, MATCHES_SELECT, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
+import { AppHeader } from "@/components/AppHeader";
 import { ResumeCenter } from "@/components/ResumeCenter";
 import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
@@ -53,15 +54,11 @@ const SORT_OPTIONS = [
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
-const MATCHES_SELECT =
-  "job_id, fit_score, missing_skills, reasons, status, notes, applied_at, jobs(title, company, location, apply_url, posted_at, description)";
-
 const SAVED_JOBS_SELECT =
   "id, job_id, created_at, jobs(id, title, company, location, description, apply_url, posted_at)";
 
 export default function Home() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const { session, loadingSession } = useSession();
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -74,19 +71,6 @@ export default function Home() {
   // Starts true (not false) so the dashboard renders its loading skeleton
   // rather than an empty state before the fetch below resolves.
   const [loadingData, setLoadingData] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoadingSession(false);
-    });
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => subscription.subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -393,21 +377,7 @@ export default function Home() {
 
   return (
     <main className="container">
-      <header className="app-header">
-        <div className="brand brand-row">
-          <Logomark size={36} />
-          <div>
-            <h1>jobfit</h1>
-            <p className="tagline">Executive shortlist</p>
-          </div>
-        </div>
-        <div className="header-actions">
-          <span className="user-email">{session.user.email}</span>
-          <button className="ghost" onClick={() => supabase.auth.signOut()}>
-            Sign out
-          </button>
-        </div>
-      </header>
+      <AppHeader session={session} active="/" />
 
       {loadingData ? (
         <div className="stat-grid">
