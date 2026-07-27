@@ -105,6 +105,16 @@ export const INTERVIEW_STAGE_OPTIONS: InterviewStage[] = [
   "other",
 ];
 
+export type Notification = {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
 export type Interview = {
   id: number;
   job_id: string | null;

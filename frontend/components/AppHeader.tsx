@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { Logomark } from "@/components/icons";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
@@ -29,6 +30,7 @@ export function AppHeader({ session, active }: { session: Session; active: "/" |
         ))}
       </nav>
       <div className="header-actions">
+        <NotificationBell session={session} />
         <span className="user-email">{session.user.email}</span>
         <button className="ghost" onClick={() => supabase.auth.signOut()}>
           Sign out
