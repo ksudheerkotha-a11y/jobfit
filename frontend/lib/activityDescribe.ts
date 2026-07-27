@@ -23,6 +23,8 @@ const ACTION_LABELS: Record<string, (m: Record<string, unknown>) => string> = {
   interview_scheduled: (m) => `Scheduled a ${m.stage ?? "interview"} with ${m.company ?? "a company"}`,
   interview_updated: (m) => `Updated the interview with ${m.company ?? "a company"}`,
   interview_deleted: (m) => `Removed the interview with ${m.company ?? "a company"}`,
+  followup_drafted: (m) => `Drafted a follow-up for ${m.title ?? "a role"} at ${m.company ?? "?"}`,
+  interview_prepped: (m) => `Prepped for the ${m.stage ?? "interview"} with ${m.company ?? "a company"}`,
 };
 
 export function describeActivity(row: ActivityRow): string {

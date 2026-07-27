@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { APPLIED_STATUSES, INTERVIEW_STAGE_LABELS, INTERVIEW_STAGE_OPTIONS, Interview, InterviewStage, MatchedJobRow } from "@/lib/types";
-import { CalendarIcon } from "@/components/icons";
+import { logActivity } from "@/lib/logActivity";
+import { CalendarIcon, SparkleIcon } from "@/components/icons";
 
 export type InterviewInput = {
   job_id: string | null;
@@ -168,16 +170,52 @@ function InterviewForm({
 
 function InterviewCard({
   interview,
+  session,
+  resumeText,
   onUpdate,
   onDelete,
 }: {
   interview: Interview;
+  session: Session;
+  resumeText: string;
   onUpdate: (id: number, input: InterviewInput) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [prepOpen, setPrepOpen] = useState(false);
+  const [prep, setPrep] = useState<{ loading: boolean; text: string; error: string | null } | null>(null);
   const stageLabel = INTERVIEW_STAGE_LABELS[interview.stage as InterviewStage] ?? interview.stage;
+
+  async function runPrep() {
+    setPrepOpen(true);
+    if (!resumeText.trim()) {
+      setPrep({ loading: false, text: "", error: "Add a default resume in the Resume Center first." });
+      return;
+    }
+    setPrep({ loading: true, text: "", error: null });
+    try {
+      const res = await fetch("/api/interview-prep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          resumeText,
+          company: interview.company,
+          role: interview.role,
+          stage: stageLabel,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Request failed");
+      setPrep({ loading: false, text: data.prep, error: null });
+      logActivity(session.user.id, "interview", String(interview.id), "interview_prepped", {
+        company: interview.company,
+        stage: stageLabel,
+      });
+    } catch (err) {
+      setPrep({ loading: false, text: "", error: err instanceof Error ? err.message : "Something went wrong" });
+    }
+  }
 
   if (editing) {
     return (
@@ -220,6 +258,10 @@ function InterviewCard({
       {interview.notes && <p className="hint" style={{ margin: "0.5rem 0 0", whiteSpace: "pre-wrap" }}>{interview.notes}</p>}
 
       <div className="resume-version-actions">
+        <button type="button" className="ghost icon-btn" onClick={() => (prepOpen ? setPrepOpen(false) : runPrep())}>
+          <SparkleIcon size={14} />
+          {prepOpen ? "Hide prep" : "Prep with AI"}
+        </button>
         <button type="button" className="ghost" onClick={() => setEditing(true)}>
           Edit
         </button>
@@ -235,6 +277,21 @@ function InterviewCard({
           Delete
         </button>
       </div>
+
+      {prepOpen && (
+        <div style={{ marginTop: "0.75rem" }}>
+          {prep?.loading && <p className="hint" style={{ margin: 0 }}>Preparing...</p>}
+          {prep?.error && <p className="error">{prep.error}</p>}
+          {prep && !prep.loading && !prep.error && (
+            <div>
+              <p className="hint" style={{ whiteSpace: "pre-wrap", margin: "0 0 0.5rem" }}>{prep.text}</p>
+              <button type="button" className="ghost" onClick={() => navigator.clipboard.writeText(prep.text)}>
+                Copy
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -242,12 +299,16 @@ function InterviewCard({
 export function InterviewHub({
   interviews,
   matches,
+  session,
+  resumeText,
   onAdd,
   onUpdate,
   onDelete,
 }: {
   interviews: Interview[];
   matches: MatchedJobRow[];
+  session: Session;
+  resumeText: string;
   onAdd: (input: InterviewInput) => Promise<void>;
   onUpdate: (id: number, input: InterviewInput) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -306,7 +367,7 @@ export function InterviewHub({
               <p className="hint" style={{ margin: "0 0 0.5rem", fontWeight: 600 }}>Upcoming</p>
               <div className="resume-version-list">
                 {upcoming.map((i) => (
-                  <InterviewCard key={i.id} interview={i} onUpdate={onUpdate} onDelete={onDelete} />
+                  <InterviewCard key={i.id} interview={i} session={session} resumeText={resumeText} onUpdate={onUpdate} onDelete={onDelete} />
                 ))}
               </div>
             </div>
@@ -316,7 +377,7 @@ export function InterviewHub({
               <p className="hint" style={{ margin: "0 0 0.5rem", fontWeight: 600 }}>Needs a time</p>
               <div className="resume-version-list">
                 {needsScheduling.map((i) => (
-                  <InterviewCard key={i.id} interview={i} onUpdate={onUpdate} onDelete={onDelete} />
+                  <InterviewCard key={i.id} interview={i} session={session} resumeText={resumeText} onUpdate={onUpdate} onDelete={onDelete} />
                 ))}
               </div>
             </div>
@@ -326,7 +387,7 @@ export function InterviewHub({
               <p className="hint" style={{ margin: "0 0 0.5rem", fontWeight: 600 }}>Past</p>
               <div className="resume-version-list">
                 {past.map((i) => (
-                  <InterviewCard key={i.id} interview={i} onUpdate={onUpdate} onDelete={onDelete} />
+                  <InterviewCard key={i.id} interview={i} session={session} resumeText={resumeText} onUpdate={onUpdate} onDelete={onDelete} />
                 ))}
               </div>
             </div>

@@ -2,14 +2,14 @@
 
 import { Fragment, useState } from "react";
 import { Contact, MatchedJobRow, MatchStatus, STATUS_LABELS, STATUS_OPTIONS } from "@/lib/types";
-import { ActivityIcon, MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
+import { ActivityIcon, BellIcon, MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
 import { logActivity } from "@/lib/logActivity";
 import { ApplicationTimeline } from "@/components/ApplicationTimeline";
 
 const MAX_VISIBLE_SKILLS = 3;
 const FOLLOW_UP_DAYS = 7;
 
-type PanelType = "cover-letter" | "tailor-resume" | "notes" | "referral" | "timeline";
+type PanelType = "cover-letter" | "tailor-resume" | "notes" | "referral" | "timeline" | "followup";
 type PanelState = { loading: boolean; text: string; error: string | null };
 
 function daysSince(iso: string): number {
@@ -142,6 +142,28 @@ export function MatchesTable({
     );
   }
 
+  function handleFollowup(idx: number, m: MatchedJobRow) {
+    togglePanel(idx, "followup");
+    if (!resumeText.trim()) {
+      setPanels((p) => ({ ...p, [panelKey(idx, "followup")]: { loading: false, text: "", error: "Save a resume above first." } }));
+      return;
+    }
+    runGroqPanel(
+      idx,
+      "followup",
+      "/api/draft-followup",
+      {
+        resumeText,
+        jobTitle: m.jobs?.title,
+        company: m.jobs?.company,
+        jobDescription: m.jobs?.description,
+        daysSinceApplied: m.applied_at ? daysSince(m.applied_at) : undefined,
+      },
+      (data) => data.draft,
+      { jobId: m.job_id, action: "followup_drafted", metadata: { company: m.jobs?.company, title: m.jobs?.title } }
+    );
+  }
+
   function handleNotesOpen(idx: number, m: MatchedJobRow) {
     togglePanel(idx, "notes");
     setNotesDraft((d) => (idx in d ? d : { ...d, [idx]: m.notes ?? "" }));
@@ -261,6 +283,12 @@ export function MatchesTable({
                             {isPanelOpen("referral") ? "Hide ask" : "Referral ask"}
                           </button>
                         )}
+                        {needsFollowUp && (
+                          <button type="button" className="ghost icon-btn" onClick={() => handleFollowup(i, m)}>
+                            <BellIcon size={14} />
+                            {isPanelOpen("followup") ? "Hide follow-up" : "Draft follow-up"}
+                          </button>
+                        )}
                         <button type="button" className="ghost icon-btn" onClick={() => togglePanel(i, "timeline")}>
                           <ActivityIcon size={14} />
                           {isPanelOpen("timeline") ? "Hide timeline" : "Timeline"}
@@ -324,6 +352,7 @@ export function MatchesTable({
                                     if (openPanel.type === "cover-letter") handleDraft(i, m);
                                     else if (openPanel.type === "tailor-resume") handleTailor(i, m);
                                     else if (openPanel.type === "referral" && contact) handleReferral(i, m, contact);
+                                    else if (openPanel.type === "followup") handleFollowup(i, m);
                                   }}
                                 >
                                   Regenerate

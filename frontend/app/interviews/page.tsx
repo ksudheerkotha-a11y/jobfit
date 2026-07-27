@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { Interview, MATCHES_SELECT, MatchedJobRow } from "@/lib/types";
+import { Interview, MATCHES_SELECT, MatchedJobRow, ResumeVersion } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
@@ -18,6 +18,7 @@ export default function Interviews() {
   const { session, loadingSession } = useSession();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -27,12 +28,16 @@ export default function Interviews() {
     Promise.all([
       supabase.from("interviews").select("*").order("scheduled_at", { ascending: true }),
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
-    ]).then(([interviewsRes, matchesRes]) => {
+      supabase.from("resume_versions").select("*"),
+    ]).then(([interviewsRes, matchesRes, versionsRes]) => {
       setInterviews((interviewsRes.data as Interview[]) ?? []);
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
+      setResumeVersions((versionsRes.data as ResumeVersion[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
+
+  const resumeText = resumeVersions.find((v) => v.is_default)?.resume_text ?? "";
 
   async function handleAdd(input: InterviewInput) {
     if (!session) return;
@@ -98,7 +103,15 @@ export default function Interviews() {
           <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
         </div>
       ) : (
-        <InterviewHub interviews={interviews} matches={matches} onAdd={handleAdd} onUpdate={handleUpdate} onDelete={handleDelete} />
+        <InterviewHub
+          interviews={interviews}
+          matches={matches}
+          resumeText={resumeText}
+          session={session}
+          onAdd={handleAdd}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+        />
       )}
     </main>
   );
