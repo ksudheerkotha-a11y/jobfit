@@ -1,0 +1,30 @@
+name: jobfit weekly digest
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"   # Monday 13:00 UTC
+  workflow_dispatch: {}     # manual "Run workflow" button in the Actions tab
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install supabase
+
+      - name: Email each user their current shortlist
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        # Optional: skips cleanly if RESEND_API_KEY isn't set as a repo
+        # secret. Sign up free at resend.com to enable this.
+        run: python send_digest.py --min-fit 0.35 --top 10

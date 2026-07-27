@@ -48,23 +48,41 @@ npm run dev
   100k-tokens/day budget with `match.py`'s scoring runs (same Groq account),
   so on a 429 it automatically retries once with the fallback key instead
   of failing the draft.
-- **Status actions**: "Mark applied" / "Dismiss" (and "Undo" / "Restore")
-  per row, writing straight to `matches.status` — no new endpoint, RLS
-  already scopes the update to the caller's own row. Dismissed matches drop
-  out of the visible list, the stat tiles, and average-fit math by default;
-  a "Show dismissed (N)" toggle brings them back, grayed out. Updates are
-  optimistic (local state first, Supabase write after) so the UI never
-  waits on a round-trip for a click this small.
+- **Tailored resume**: a "Tailor resume" button per job, same pattern as
+  draft-assist (`app/api/tailor-resume`) — returns a rewritten summary,
+  bullet suggestions in the JD's own terminology, and a "skills to lead
+  with" list, using only facts already in the resume. Not a full rewrite;
+  a starting point you edit before actually applying.
+- **Pipeline tracking**: `matches.status` is a real pipeline (New → Applied
+  → Phone screen → Onsite → Offer/Rejected/Dismissed) via a per-row select,
+  plus a free-text notes field per match. Dismissed matches drop out of the
+  visible list, stat tiles, and average-fit math by default; a "Show
+  dismissed (N)" toggle brings them back, grayed out. `applied_at` is set
+  once, the first time a match leaves New, and never reset by later stage
+  changes.
+- **Follow-up nudges**: a "Follow up" badge appears on any match that's
+  been sitting in Applied for 7+ days — computed client-side from
+  `applied_at`, no cron job needed.
+- **Referral finder**: a "Your network" card where you self-report contacts
+  (name, company, how you know them — there's no LinkedIn import, see the
+  root README for why). Any shortlisted job at a company you have a contact
+  at gets a "Knows {name}" badge and a "Referral ask" button
+  (`app/api/referral-draft`) that drafts a short ask message via Groq.
 - **Search + sort**: a free-text box matches against job title or company
   (separate from the location filter), and a sort control reorders by best
   fit (default), company, or most recent posting.
 - Skeleton loading states (stat tiles, resume card, table rows) instead of
   plain "Loading..." text, a sticky table header, and row-hover highlighting.
+- **Weekly digest email** (optional, root-level not frontend): see the root
+  README's Deploy section — `send_digest.py` + `.github/workflows/digest.yml`
+  email each user their current shortlist via Resend.
 
 ## What's not here (yet)
 
 - Server-side rendering / auth cookies — this is a client-only skeleton using
   the browser Supabase client directly.
+- Automated/imported network data for the referral finder — contacts are
+  self-reported, on purpose.
 
 ## Deploying to Vercel
 
@@ -74,10 +92,17 @@ Deployment → Root Directory) before the first deploy, or Vercel's
 auto-detection will find the Python engine at the repo root instead of this
 Next.js app. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_KEY`, `GROQ_API_KEY`, and (optional) `GROQ_API_KEY_FALLBACK`
-as project environment variables (the server-only ones — draft-assist won't work without them, but
-everything else will). After deploying, add the production URL to your
+as project environment variables (the server-only ones — draft-assist,
+tailor-resume, and the referral drafter all share these same keys, nothing
+extra to add for them). After deploying, add the production URL to your
 Supabase project's Authentication → URL Configuration (Site URL and
 Redirect URLs) or confirmation emails will redirect back to `localhost`.
+
+**Database migration**: pipeline tracking and the referral finder need
+`matches.notes`, `matches.applied_at`, and a new `contacts` table. A fresh
+`supabase_schema.sql` already includes these; an existing project needs
+`supabase_migration_002_pipeline_and_contacts.sql` run once in the SQL
+editor (idempotent, safe to re-run).
 
 ## Auth email delivery
 

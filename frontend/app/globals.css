@@ -453,8 +453,24 @@ select.control-input {
   border: 1px solid var(--border);
 }
 
+.badge-warning {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--text-primary);
+}
+
+.badge-accent {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent-strong);
+}
+
 .row-dismissed {
   opacity: 0.55;
+}
+
+.status-select {
+  width: 130px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8125rem;
 }
 
 .row-actions {
@@ -469,11 +485,6 @@ select.control-input {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.35rem;
-}
-
-.status-actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .icon-link {
@@ -543,4 +554,30 @@ select.control-input {
   .control-input {
     width: 140px;
   }
+}
+
+/* ---------- Contacts (referral finder) ---------- */
+
+.contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--page-plane);
+}
+
+.contact-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }

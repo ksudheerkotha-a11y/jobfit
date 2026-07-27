@@ -31,12 +31,30 @@ create table if not exists matches (
   fit_score       numeric not null,
   missing_skills  text[] not null default '{}',
   reasons         text[] not null default '{}',
-  status          text not null default 'new',  -- new | seen | applied | dismissed
+  -- new | applied | phone_screen | onsite | offer | rejected | dismissed
+  status          text not null default 'new',
+  notes           text not null default '',
+  applied_at      timestamptz,  -- set once, the first time status leaves 'new'
   created_at      timestamptz not null default now(),
   unique (user_id, job_id)
 );
 
 create index if not exists matches_user_fit_idx on matches (user_id, fit_score desc);
+
+-- Self-reported network for referral matching: "I know someone at Stripe."
+-- There's no LinkedIn/contacts-import integration — the user types these in
+-- themselves, and the app cross-references company names against the
+-- shortlist. See README for why an automated version isn't here.
+create table if not exists contacts (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  name        text not null,
+  company     text not null,
+  context     text not null default '',  -- how they know them, role, etc.
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists contacts_user_company_idx on contacts (user_id, company);
 
 -- Row Level Security. The service_role key (used by ingest.py / match.py)
 -- bypasses RLS entirely, so batch writes are unaffected by the policies below.
@@ -44,6 +62,7 @@ create index if not exists matches_user_fit_idx on matches (user_id, fit_score d
 alter table jobs enable row level security;
 alter table resumes enable row level security;
 alter table matches enable row level security;
+alter table contacts enable row level security;
 
 -- Job listings are not sensitive; anyone (including the frontend's anon key)
 -- can read them. Only the service_role key can write.
@@ -64,5 +83,11 @@ create policy "users read their own matches"
 
 create policy "users update their own matches"
   on matches for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Users fully own their contacts list.
+create policy "users manage their own contacts"
+  on contacts for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);

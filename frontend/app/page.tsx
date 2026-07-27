@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { MatchedJobRow, MatchStatus } from "@/lib/types";
+import { APPLIED_STATUSES, Contact, MatchedJobRow, MatchStatus } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
 import { ResumeForm } from "@/components/ResumeForm";
 import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
+import { ContactsManager } from "@/components/ContactsManager";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -31,11 +32,15 @@ const SORT_OPTIONS = [
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
+const MATCHES_SELECT =
+  "job_id, fit_score, missing_skills, reasons, status, notes, applied_at, jobs(title, company, location, apply_url, posted_at, description)";
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [resumeText, setResumeText] = useState("");
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [locationFilter, setLocationFilter] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortValue>("fit");
@@ -64,35 +69,57 @@ export default function Home() {
     setLoadingData(true);
 
     Promise.all([
-      supabase
-        .from("resumes")
-        .select("resume_text")
-        .eq("user_id", session.user.id)
-        .maybeSingle(),
-      supabase
-        .from("matches")
-        .select("job_id, fit_score, missing_skills, reasons, status, jobs(title, company, location, apply_url, posted_at, description)")
-        .order("fit_score", { ascending: false }),
-    ]).then(([resumeRes, matchesRes]) => {
+      supabase.from("resumes").select("resume_text").eq("user_id", session.user.id).maybeSingle(),
+      supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
+      supabase.from("contacts").select("id, name, company, context").order("name"),
+    ]).then(([resumeRes, matchesRes, contactsRes]) => {
       setResumeText(resumeRes.data?.resume_text ?? "");
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
+      setContacts((contactsRes.data as Contact[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
 
   async function handleStatusChange(jobId: string, status: MatchStatus) {
     if (!session) return;
-    // Optimistic — the dashboard should feel instant; Supabase RLS still
-    // guarantees this can only ever touch the caller's own row.
-    setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, status } : m)));
+
+    const existing = matches.find((m) => m.job_id === jobId);
+    // applied_at is set once, the first time a match leaves "new" — later
+    // status changes (phone_screen, onsite, ...) don't reset the clock,
+    // since the follow-up nudge should track "days since you applied," not
+    // "days since the last status change."
+    const appliedAt =
+      existing?.applied_at ?? (APPLIED_STATUSES.includes(status) ? new Date().toISOString() : null);
+
+    setMatches((prev) =>
+      prev.map((m) => (m.job_id === jobId ? { ...m, status, applied_at: appliedAt } : m))
+    );
+
     await supabase
       .from("matches")
-      .update({ status })
+      .update({ status, applied_at: appliedAt })
       .eq("job_id", jobId)
       .eq("user_id", session.user.id);
   }
 
+  async function handleNotesChange(jobId: string, notes: string) {
+    if (!session) return;
+    setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, notes } : m)));
+    await supabase.from("matches").update({ notes }).eq("job_id", jobId).eq("user_id", session.user.id);
+  }
+
   const dismissedCount = useMemo(() => matches.filter((m) => m.status === "dismissed").length, [matches]);
+
+  const followUpCount = useMemo(
+    () =>
+      matches.filter(
+        (m) =>
+          m.status === "applied" &&
+          m.applied_at &&
+          Math.floor((Date.now() - new Date(m.applied_at).getTime()) / 86400000) >= 7
+      ).length,
+    [matches]
+  );
 
   const visibleMatches = useMemo(() => {
     let result = showDismissed ? matches : matches.filter((m) => m.status !== "dismissed");
@@ -129,7 +156,6 @@ export default function Home() {
     const avgFit = active.reduce((sum, m) => sum + m.fit_score, 0) / active.length;
     const top = [...active].sort((a, b) => b.fit_score - a.fit_score)[0];
     const companies = new Set(active.map((m) => m.jobs?.company).filter(Boolean));
-    const appliedCount = matches.filter((m) => m.status === "applied").length;
 
     return {
       count: active.length,
@@ -138,7 +164,6 @@ export default function Home() {
       topTitle: top.jobs?.title ?? "",
       topCompany: top.jobs?.company ?? "",
       companyCount: companies.size,
-      appliedCount,
     };
   }, [matches]);
 
@@ -196,9 +221,9 @@ export default function Home() {
               subtitle={`${stats.topTitle} · ${stats.topCompany}`}
             />
             <StatTile
-              label="Companies"
-              value={String(stats.companyCount)}
-              subtitle={stats.appliedCount > 0 ? `${stats.appliedCount} applied` : "represented in shortlist"}
+              label="Follow-ups due"
+              value={String(followUpCount)}
+              subtitle={followUpCount > 0 ? "applied 7+ days ago" : `${stats.companyCount} companies`}
             />
           </div>
         )
@@ -211,6 +236,10 @@ export default function Home() {
         </div>
       ) : (
         <ResumeForm userId={session.user.id} initialText={resumeText} />
+      )}
+
+      {!loadingData && (
+        <ContactsManager userId={session.user.id} contacts={contacts} onContactsChange={setContacts} />
       )}
 
       <div className="card">
@@ -284,7 +313,9 @@ export default function Home() {
             matches={visibleMatches}
             resumeText={resumeText}
             accessToken={session.access_token}
+            contacts={contacts}
             onStatusChange={handleStatusChange}
+            onNotesChange={handleNotesChange}
           />
         )}
       </div>

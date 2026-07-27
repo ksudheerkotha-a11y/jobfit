@@ -76,13 +76,21 @@ doesn't cross; see the "clean, legal core" note up top.
   anthropic`) or `--scorer groq` (set `GROQ_API_KEY`, `pip install groq` — a
   free tier with no card required, at console.groq.com) for genuine semantic
   judgement instead of keyword overlap. Either way, jobs are pre-narrowed to
-  the top `--prefilter-top` (default 20) by the free local scorer first, so
+  the top `--prefilter-top` (default 32) by the free local scorer first, so
   a real config doesn't burn through free-tier request *and token* limits —
   Groq's free tier is 100k tokens/day, and a full-length JD + resume in every
-  prompt adds up fast across even a modest `--prefilter-top`.
-- **The next module (the real differentiator)**: a *human-path* step — check the
-  user's own network for a connection at each shortlisted company and draft the
-  referral ask. A warm intro is worth 4–10x a cold apply; that's the wedge.
+  prompt adds up fast across even a modest `--prefilter-top`. HTML is
+  stripped and length-capped before either scorer sees it — pure token
+  waste otherwise.
+- **The human-path module**: built, in the frontend — a self-reported
+  "your network" list cross-referenced against the shortlist, flagging any
+  job at a company you know someone at and drafting the referral ask via
+  Groq. A warm intro is worth 4–10x a cold apply; see `frontend/README.md`
+  for how it works and why it's self-reported rather than an automated
+  LinkedIn/contacts import.
+- **Weekly digest email**: `send_digest.py` + `.github/workflows/digest.yml`
+  email each user their current shortlist via Resend (optional — needs a
+  free Resend account and `RESEND_API_KEY`; skips cleanly without it).
 
 ## Deploy: GitHub Actions (engine) + Supabase (data) + Vercel (frontend)
 
@@ -118,7 +126,9 @@ Then for real, set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` and drop the flag.
 | `SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | service_role key |
 | `GROQ_API_KEY` | free tier, no card required — console.groq.com (the default workflow uses `--scorer groq`) |
+| `GROQ_API_KEY_FALLBACK` | optional — a second Groq account's key, used automatically once the primary hits its 100k-tokens/day cap |
 | `ANTHROPIC_API_KEY` | only if you switch the workflow to `--scorer claude` |
+| `RESEND_API_KEY` | optional — enables `.github/workflows/digest.yml`'s weekly shortlist email |
 
 Trigger a first run from the Actions tab (*workflow_dispatch*) to populate Supabase.
 
@@ -129,7 +139,7 @@ their own rows:
 ```ts
 const { data } = await supabase
   .from('matches')
-  .select('fit_score, missing_skills, reasons, status, jobs(title, company, location, apply_url, posted_at)')
+  .select('job_id, fit_score, missing_skills, reasons, status, notes, applied_at, jobs(title, company, location, apply_url, posted_at, description)')
   .order('fit_score', { ascending: false });
 ```
 
@@ -140,10 +150,17 @@ A minimal skeleton of this frontend lives in [`frontend/`](frontend/) — see
 
 ## Honest limitations (v0)
 
-- Covers Greenhouse + Lever only. Big employers on Workday/Taleo need their own
-  adapters (some have public feeds, some don't).
+- Covers Greenhouse, Lever, Ashby, and RemoteOK. Big employers on Workday/Taleo
+  need their own adapters (some have public feeds, some don't); Workable's
+  once-public widget API returned empty results for every real customer
+  tested as of 2026-07-27 (see "Extending" above).
 - The ghost filter is a light heuristic (description length). A stronger version
   tracks re-post history over time to catch true evergreen/ghost reqs.
 - The local scorer is keyword-aware, not deeply semantic — good for a first cut
-  and gating; use `--scorer claude` when match quality matters.
-- No auto-apply. That's intentional: prove targeting quality first.
+  and gating; use `--scorer claude`/`--scorer groq` when match quality matters.
+- The referral finder's network is self-reported, not imported from LinkedIn
+  or anywhere else — see "A note on LinkedIn / Naukri / IIMJobs" above for why.
+- No auto-apply. That's intentional: prove targeting quality first, and an
+  automated submission is an irreversible action this project won't take on
+  a user's behalf without them reviewing it — draft-assist and the tailored
+  resume generator exist so that review step is fast, not so it can be skipped.

@@ -1,27 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callGroq, verifySession } from "@/lib/groqServer";
 
-// Runs server-side only (Vercel serverless function) — GROQ_API_KEY never
-// reaches the browser. Gated behind a valid Supabase session so the shared
-// free-tier key can't be hit by anonymous requests.
 export const runtime = "nodejs";
 
-const DRAFT_PROMPT = `You are helping a candidate draft a short, tailored cover letter for one specific job.
+const TAILOR_PROMPT = `You are helping a candidate tailor their resume to one specific job posting.
 
-Candidate's resume:
+Candidate's current resume:
 {resume}
 
 Job ({title} at {company}):
 {jd}
 
-Write a cover letter draft (250-350 words) that:
-- Opens by naming the specific role and company, not a generic greeting.
-- Draws on 2-3 concrete things from the resume that map directly onto this JD's requirements.
-- Uses only facts present in the resume — never invent experience, dates, or skills that aren't there.
-- Reads like a confident, specific human wrote it, not boilerplate ("I am excited to apply...").
-- Ends with a brief, direct closing line.
+Produce a tailored version of the resume's SUMMARY and SKILLS sections only —
+not a full rewrite — that emphasizes what this specific JD is asking for,
+using only experience and skills already present in the original resume.
+Never invent experience, employers, dates, or skills that aren't there.
 
-Output only the letter text, no preamble, no markdown formatting, no subject line.`;
+Output in this exact structure, plain text, no markdown:
+
+TAILORED SUMMARY:
+<2-3 sentences, rewritten to foreground the parts of their background this
+JD cares most about>
+
+SUGGESTED BULLET REWRITES:
+<3-5 existing resume bullets rewritten to use this JD's own terminology
+where the underlying fact is the same — e.g. if the JD says "stakeholder
+management" and the resume says "cross-functional collaboration" for the
+same kind of work, prefer the JD's phrasing. Each on its own line, prefixed
+with "- ">
+
+SKILLS TO LEAD WITH:
+<comma-separated list of skills from the resume to put first/most visibly,
+ranked by relevance to this JD>`;
 
 export async function POST(req: NextRequest) {
   const session = await verifySession(req);
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const prompt = DRAFT_PROMPT.replace("{resume}", resumeText.trim())
+  const prompt = TAILOR_PROMPT.replace("{resume}", resumeText.trim())
     .replace("{title}", jobTitle)
     .replace("{company}", company)
     .replace("{jd}", jobDescription.trim());
@@ -54,5 +64,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  return NextResponse.json({ draft: result.text });
+  return NextResponse.json({ tailored: result.text });
 }

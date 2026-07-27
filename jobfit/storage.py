@@ -162,3 +162,28 @@ def upsert_matches(user_id: str, matches: list[MatchedJob]) -> None:
         # that actually matters for "update if this pairing already exists"
         # is (user_id, job_id), so it must be named explicitly here.
         client.table("matches").upsert(rows, on_conflict="user_id,job_id").execute()
+
+
+def fetch_user_emails() -> dict[str, str]:
+    """{user_id: email} for every signed-up user. auth.users lives outside
+    the public schema PostgREST exposes, so this goes through Supabase's
+    Auth Admin API instead of .table(...) — service_role only."""
+    users = _client().auth.admin.list_users()
+    return {u.id: u.email for u in users if u.email}
+
+
+def fetch_matches_for_digest(user_id: str, min_fit: float, top: int) -> list[dict[str, Any]]:
+    """A user's current non-dismissed shortlist, joined with job details,
+    for the weekly digest email."""
+    return (
+        _client()
+        .table("matches")
+        .select("fit_score, missing_skills, job_id, jobs(title, company, location, apply_url)")
+        .eq("user_id", user_id)
+        .neq("status", "dismissed")
+        .gte("fit_score", min_fit)
+        .order("fit_score", desc=True)
+        .limit(top)
+        .execute()
+        .data
+    )
