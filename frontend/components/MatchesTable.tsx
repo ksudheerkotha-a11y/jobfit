@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { Contact, MatchedJobRow, MatchStatus, STATUS_LABELS } from "@/lib/types";
 import { MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
+import { logActivity } from "@/lib/logActivity";
 
 const MAX_VISIBLE_SKILLS = 3;
 const FOLLOW_UP_DAYS = 7;
@@ -31,6 +32,7 @@ export function MatchesTable({
   matches,
   resumeText,
   accessToken,
+  userId,
   contacts,
   onStatusChange,
   onNotesChange,
@@ -38,6 +40,7 @@ export function MatchesTable({
   matches: MatchedJobRow[];
   resumeText: string;
   accessToken: string;
+  userId: string;
   contacts: Contact[];
   onStatusChange: (jobId: string, status: MatchStatus) => void;
   onNotesChange: (jobId: string, notes: string) => void;
@@ -61,7 +64,14 @@ export function MatchesTable({
     setOpenPanel((prev) => (prev?.idx === idx && prev.type === type ? null : { idx, type }));
   }
 
-  async function runGroqPanel(idx: number, type: PanelType, endpoint: string, body: object, extract: (data: any) => string) {
+  async function runGroqPanel(
+    idx: number,
+    type: PanelType,
+    endpoint: string,
+    body: object,
+    extract: (data: any) => string,
+    activity: { jobId: string; action: string; metadata: Record<string, unknown> }
+  ) {
     const key = panelKey(idx, type);
     setPanels((p) => ({ ...p, [key]: { loading: true, text: p[key]?.text ?? "", error: null } }));
     try {
@@ -73,6 +83,7 @@ export function MatchesTable({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Request failed");
       setPanels((p) => ({ ...p, [key]: { loading: false, text: extract(data), error: null } }));
+      logActivity(userId, "application", activity.jobId, activity.action, activity.metadata);
     } catch (err) {
       setPanels((p) => ({
         ...p,
@@ -92,7 +103,8 @@ export function MatchesTable({
       "cover-letter",
       "/api/draft-cover-letter",
       { resumeText, jobTitle: m.jobs?.title, company: m.jobs?.company, jobDescription: m.jobs?.description },
-      (data) => data.draft
+      (data) => data.draft,
+      { jobId: m.job_id, action: "cover_letter_generated", metadata: { company: m.jobs?.company, title: m.jobs?.title } }
     );
   }
 
@@ -107,7 +119,8 @@ export function MatchesTable({
       "tailor-resume",
       "/api/tailor-resume",
       { resumeText, jobTitle: m.jobs?.title, company: m.jobs?.company, jobDescription: m.jobs?.description },
-      (data) => data.tailored
+      (data) => data.tailored,
+      { jobId: m.job_id, action: "resume_tailored", metadata: { company: m.jobs?.company, title: m.jobs?.title } }
     );
   }
 
@@ -129,7 +142,8 @@ export function MatchesTable({
         contactName: contact.name,
         contactContext: contact.context,
       },
-      (data) => data.draft
+      (data) => data.draft,
+      { jobId: m.job_id, action: "referral_drafted", metadata: { company: m.jobs?.company, contact: contact.name } }
     );
   }
 

@@ -71,7 +71,7 @@ export function BrowseMatches({ resumeText, accessToken }: { resumeText: string;
           {error && <p className="error">{error}</p>}
           {matches && matches.length === 0 && (
             <p className="empty-state">
-              No additional matches found — your AI-verified shortlist already covers the best of what's
+              No additional matches found — your AI-verified shortlist already covers the best of what&apos;s
               stored.
             </p>
           )}

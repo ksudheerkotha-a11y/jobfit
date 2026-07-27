@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { parseResumeFile, UnsupportedResumeFileError } from "@/lib/parseResumeFile";
+import { logActivity } from "@/lib/logActivity";
 
 export function ResumeForm({ userId, initialText }: { userId: string; initialText: string }) {
   const [text, setText] = useState(initialText);
@@ -46,6 +47,7 @@ export function ResumeForm({ userId, initialText }: { userId: string; initialTex
     } else {
       setSavedAt(new Date());
       setOpen(false);
+      logActivity(userId, "resume", userId, "resume_updated", { length: text.length });
     }
   }
 
@@ -72,7 +74,7 @@ export function ResumeForm({ userId, initialText }: { userId: string; initialTex
               {parsing ? "Reading file..." : "Upload PDF, Word, or text file"}
             </button>
             <span className="hint" style={{ margin: 0 }}>
-              or paste it directly below — whichever's easier
+              or paste it directly below — whichever&apos;s easier
             </span>
             <input
               ref={fileInputRef}

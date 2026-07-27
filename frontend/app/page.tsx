@@ -9,9 +9,24 @@ import { ResumeForm } from "@/components/ResumeForm";
 import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
 import { ContactsManager } from "@/components/ContactsManager";
-import { BellIcon, ListIcon, Logomark, SearchIcon, TargetIcon, TrophyIcon } from "@/components/icons";
+import {
+  ActivityIcon,
+  BellIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ListIcon,
+  Logomark,
+  SearchIcon,
+  SparkleIcon,
+  TargetIcon,
+  TrendingUpIcon,
+  TrophyIcon,
+} from "@/components/icons";
 import { BrowseMatches } from "@/components/BrowseMatches";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { logActivity } from "@/lib/logActivity";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { ApplicationsChart } from "@/components/ApplicationsChart";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -103,12 +118,27 @@ export default function Home() {
       .update({ status, applied_at: appliedAt })
       .eq("job_id", jobId)
       .eq("user_id", session.user.id);
+
+    if (existing && existing.status !== status) {
+      logActivity(session.user.id, "application", jobId, "status_changed", {
+        from: existing.status,
+        to: status,
+        company: existing.jobs?.company,
+        title: existing.jobs?.title,
+      });
+    }
   }
 
   async function handleNotesChange(jobId: string, notes: string) {
     if (!session) return;
     setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, notes } : m)));
     await supabase.from("matches").update({ notes }).eq("job_id", jobId).eq("user_id", session.user.id);
+
+    const job = matches.find((m) => m.job_id === jobId);
+    logActivity(session.user.id, "application", jobId, "note_added", {
+      company: job?.jobs?.company,
+      title: job?.jobs?.title,
+    });
   }
 
   const dismissedCount = useMemo(() => matches.filter((m) => m.status === "dismissed").length, [matches]);
@@ -168,6 +198,37 @@ export default function Home() {
       topCompany: top.jobs?.company ?? "",
       companyCount: companies.size,
     };
+  }, [matches]);
+
+  // "Applied or later" — the set response rate and active-interview counts
+  // are drawn from. Mirrors APPLIED_STATUSES (excludes 'new'/'dismissed').
+  const applicationStats = useMemo(() => {
+    const applied = matches.filter((m) => APPLIED_STATUSES.includes(m.status));
+    const weekAgo = Date.now() - 7 * 86400000;
+    const thisWeek = applied.filter((m) => m.applied_at && new Date(m.applied_at).getTime() >= weekAgo);
+    const activeInterviews = matches.filter((m) => m.status === "phone_screen" || m.status === "onsite");
+    const offers = matches.filter((m) => m.status === "offer");
+    // Of everything applied, the share that moved past the initial "applied"
+    // stage — the closest real signal to "did someone respond" without a
+    // dedicated recruiter-reply concept yet.
+    const progressed = applied.filter((m) => m.status !== "applied");
+    const responseRate = applied.length > 0 ? Math.round((progressed.length / applied.length) * 100) : 0;
+
+    return {
+      thisWeek: thisWeek.length,
+      activeInterviews: activeInterviews.length,
+      offers: offers.length,
+      responseRate,
+      appliedCount: applied.length,
+    };
+  }, [matches]);
+
+  // Single highest-fit match still sitting at "New" — the one nudge most
+  // worth surfacing on a dashboard, computed from data already on the page.
+  const recommendedFocus = useMemo(() => {
+    const candidates = matches.filter((m) => m.status === "new");
+    if (candidates.length === 0) return null;
+    return [...candidates].sort((a, b) => b.fit_score - a.fit_score)[0];
   }, [matches]);
 
   if (loadingSession) {
@@ -247,6 +308,68 @@ export default function Home() {
             />
           </div>
         )
+      )}
+
+      {!loadingData && stats && (
+        <div className="stat-grid">
+          <StatTile
+            label="Applied this week"
+            value={<AnimatedNumber value={applicationStats.thisWeek} />}
+            subtitle="last 7 days"
+            icon={<TrendingUpIcon />}
+          />
+          <StatTile
+            label="Active interviews"
+            value={<AnimatedNumber value={applicationStats.activeInterviews} />}
+            subtitle="phone screen or onsite"
+            icon={<CalendarIcon />}
+          />
+          <StatTile
+            label="Offers"
+            value={<AnimatedNumber value={applicationStats.offers} />}
+            subtitle={`across ${applicationStats.appliedCount} applications`}
+            icon={<CheckCircleIcon />}
+          />
+          <StatTile
+            label="Response rate"
+            value={<AnimatedNumber value={applicationStats.responseRate} suffix="%" />}
+            subtitle="moved past 'applied'"
+            icon={<ActivityIcon />}
+          />
+        </div>
+      )}
+
+      {!loadingData && recommendedFocus && (
+        <div className="card">
+          <div className="focus-banner">
+            <div className="focus-banner-copy">
+              <span className="focus-banner-icon">
+                <SparkleIcon size={18} />
+              </span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  Recommended focus: {recommendedFocus.jobs?.title} · {recommendedFocus.jobs?.company}
+                </p>
+                <p className="hint" style={{ margin: 0 }}>
+                  Your highest-fit match ({Math.round(recommendedFocus.fit_score * 100)}%) still sitting at
+                  &ldquo;New&rdquo; — worth applying to first.
+                </p>
+              </div>
+            </div>
+            {recommendedFocus.jobs?.apply_url && (
+              <a className="apply-link" href={recommendedFocus.jobs.apply_url} target="_blank" rel="noreferrer">
+                Apply →
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!loadingData && matches.length > 0 && (
+        <>
+          <ApplicationsChart matches={matches} />
+          <ActivityFeed userId={session.user.id} />
+        </>
       )}
 
       {loadingData ? (
@@ -336,6 +459,7 @@ export default function Home() {
             matches={visibleMatches}
             resumeText={resumeText}
             accessToken={session.access_token}
+            userId={session.user.id}
             contacts={contacts}
             onStatusChange={handleStatusChange}
             onNotesChange={handleNotesChange}
