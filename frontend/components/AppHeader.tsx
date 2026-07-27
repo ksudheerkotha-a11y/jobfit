@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/jobs", label: "Browse jobs" },
+  { href: "/auto-apply", label: "Auto Apply" },
   { href: "/tracker", label: "Tracker" },
   { href: "/interviews", label: "Interviews" },
   { href: "/networking", label: "Networking" },

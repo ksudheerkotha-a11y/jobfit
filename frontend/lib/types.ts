@@ -138,3 +138,45 @@ export type ResumeVersion = {
   is_default: boolean;
   created_at: string;
 };
+
+// Buttons on the Auto Apply settings screen — a label over the same
+// fit_score scale everything else already uses (0-1), so "Excellent"
+// picks the same bar the dashboard's stats already compute against.
+export const QUALITY_TIERS = [
+  { label: "Excellent", value: 0.85 },
+  { label: "Strong", value: 0.75 },
+  { label: "Good", value: 0.65 },
+  { label: "Stretch", value: 0.5 },
+] as const;
+
+export type AutoApplySettings = {
+  enabled: boolean;
+  min_fit_score: number;
+  daily_cap: number;
+  resume_version_id: number | null;
+  updated_at: string;
+};
+
+export type AutoApplyQueueStatus = "queued" | "applied" | "dismissed";
+
+// Shared by the Auto Apply page and the server-side queue generator so the
+// query shape can't drift between them.
+export const AUTO_APPLY_QUEUE_SELECT =
+  "id, job_id, cover_letter_draft, tailored_resume_draft, status, created_at, jobs(title, company, location, apply_url, posted_at, description)";
+
+export type AutoApplyQueueItem = {
+  id: number;
+  job_id: string;
+  cover_letter_draft: string;
+  tailored_resume_draft: string;
+  status: AutoApplyQueueStatus;
+  created_at: string;
+  jobs: {
+    title: string;
+    company: string;
+    location: string;
+    apply_url: string;
+    posted_at: string | null;
+    description: string;
+  } | null;
+};

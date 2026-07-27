@@ -172,6 +172,38 @@ create table if not exists activity_log (
 create index if not exists activity_log_user_recent_idx on activity_log (user_id, created_at desc);
 create index if not exists activity_log_entity_idx on activity_log (user_id, entity_type, entity_id);
 
+-- One row per user. "enabled" never triggers real submission — it only
+-- toggles whether qualifying new matches get auto-prepared (see
+-- auto_apply_queue) for the user to review and apply to themselves.
+create table if not exists auto_apply_settings (
+  user_id            uuid primary key references auth.users(id) on delete cascade,
+  enabled            boolean not null default false,
+  min_fit_score      numeric not null default 0.85,
+  daily_cap          integer not null default 5,
+  resume_version_id  bigint references resume_versions(id) on delete set null,
+  updated_at         timestamptz not null default now()
+);
+
+-- System-written (service_role) drafts, one per qualifying match. Never an
+-- application record itself — it's cover-letter/tailored-resume prep the
+-- user reviews and, if they like it, applies with manually via the job's
+-- real apply_url. status moves to 'applied' or 'dismissed' by the user's
+-- own action, never automatically. unique(user_id, job_id) means a match
+-- is only ever queued once, so a dismissed suggestion never resurfaces.
+create table if not exists auto_apply_queue (
+  id                     bigserial primary key,
+  user_id                uuid not null references auth.users(id) on delete cascade,
+  job_id                 text not null references jobs(id) on delete cascade,
+  cover_letter_draft     text not null default '',
+  tailored_resume_draft  text not null default '',
+  status                 text not null default 'queued',
+  created_at             timestamptz not null default now(),
+  unique (user_id, job_id)
+);
+
+create index if not exists auto_apply_queue_user_status_idx
+  on auto_apply_queue (user_id, status, created_at desc);
+
 -- Row Level Security. The service_role key (used by ingest.py / match.py)
 -- bypasses RLS entirely, so batch writes are unaffected by the policies below.
 
@@ -186,6 +218,8 @@ alter table user_preferences enable row level security;
 alter table interviews enable row level security;
 alter table notifications enable row level security;
 alter table activity_log enable row level security;
+alter table auto_apply_settings enable row level security;
+alter table auto_apply_queue enable row level security;
 
 -- Job listings are not sensitive; anyone (including the frontend's anon key)
 -- can read them. Only the service_role key can write.
@@ -264,5 +298,22 @@ create policy "users read their own notifications"
 
 create policy "users update their own notifications"
   on notifications for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Full CRUD by owner: their own settings, end to end.
+create policy "users manage their own auto-apply settings"
+  on auto_apply_settings for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Read + update only (mark applied/dismissed) — the drafts themselves are
+-- system-written, same pattern as notifications.
+create policy "users read their own auto-apply queue"
+  on auto_apply_queue for select
+  using (auth.uid() = user_id);
+
+create policy "users update their own auto-apply queue"
+  on auto_apply_queue for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
