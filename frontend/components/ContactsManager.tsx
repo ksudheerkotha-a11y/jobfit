@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Contact } from "@/lib/types";
+import { UsersIcon } from "@/components/icons";
 
 export function ContactsManager({
   userId,
@@ -51,7 +52,10 @@ export function ContactsManager({
     <div className="card">
       <div className="card-header" onClick={() => setOpen((v) => !v)}>
         <div>
-          <h2>Your network</h2>
+          <h2 className="card-title-icon">
+            <UsersIcon size={17} />
+            Your network
+          </h2>
           <p className="hint" style={{ marginBottom: 0 }}>
             {contacts.length > 0
               ? `${contacts.length} contact${contacts.length === 1 ? "" : "s"} — cross-checked against your shortlist`

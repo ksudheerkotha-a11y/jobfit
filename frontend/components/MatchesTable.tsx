@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Contact, MatchedJobRow, MatchStatus, STATUS_LABELS } from "@/lib/types";
+import { MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
 
 const MAX_VISIBLE_SKILLS = 3;
 const FOLLOW_UP_DAYS = 7;
@@ -231,19 +232,23 @@ export function MatchesTable({
                   <td>
                     <div className="row-actions">
                       <div className="row-actions-top">
-                        <button type="button" className="ghost" onClick={() => handleDraft(i, m)}>
+                        <button type="button" className="ghost icon-btn" onClick={() => handleDraft(i, m)}>
+                          <MailIcon size={14} />
                           {isPanelOpen("cover-letter") ? "Hide letter" : "Cover letter"}
                         </button>
-                        <button type="button" className="ghost" onClick={() => handleTailor(i, m)}>
+                        <button type="button" className="ghost icon-btn" onClick={() => handleTailor(i, m)}>
+                          <SparkleIcon size={14} />
                           {isPanelOpen("tailor-resume") ? "Hide tailor" : "Tailor resume"}
                         </button>
                       </div>
                       <div className="row-actions-top">
-                        <button type="button" className="ghost" onClick={() => handleNotesOpen(i, m)}>
+                        <button type="button" className="ghost icon-btn" onClick={() => handleNotesOpen(i, m)}>
+                          <NoteIcon size={14} />
                           {isPanelOpen("notes") ? "Hide notes" : m.notes ? "Notes ●" : "Notes"}
                         </button>
                         {contact && (
-                          <button type="button" className="ghost" onClick={() => handleReferral(i, m, contact)}>
+                          <button type="button" className="ghost icon-btn" onClick={() => handleReferral(i, m, contact)}>
+                            <UsersIcon size={14} />
                             {isPanelOpen("referral") ? "Hide ask" : "Referral ask"}
                           </button>
                         )}

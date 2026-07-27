@@ -76,6 +76,17 @@ npm run dev
 - **Weekly digest email** (optional, root-level not frontend): see the root
   README's Deploy section — `send_digest.py` + `.github/workflows/digest.yml`
   email each user their current shortlist via Resend.
+- **More matches** (`app/api/browse-matches`): the AI-verified shortlist is
+  deliberately small (see the root README's prefilter-top note on why) —
+  this is a second, much bigger tier below it. Cheap TF-cosine keyword
+  scoring (no Groq call, no daily limit) over recent postings not already
+  in the shortlist, computed on request and clearly labeled as lower
+  confidence than the AI-verified tier. Collapsed by default; loads once
+  per session when opened.
+- A visual pass: card shadows/depth, an icon set for stat tiles and section
+  headers (`components/icons.tsx`, inline SVG, no icon library dependency),
+  a hero treatment on the "Top match" stat tile, and a small logomark in
+  the header.
 
 ## What's not here (yet)
 

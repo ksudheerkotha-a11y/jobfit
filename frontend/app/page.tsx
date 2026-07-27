@@ -9,6 +9,8 @@ import { ResumeForm } from "@/components/ResumeForm";
 import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
 import { ContactsManager } from "@/components/ContactsManager";
+import { BellIcon, ListIcon, Logomark, SearchIcon, TargetIcon, TrophyIcon } from "@/components/icons";
+import { BrowseMatches } from "@/components/BrowseMatches";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -179,7 +181,8 @@ export default function Home() {
     return (
       <main className="container center-page">
         <div>
-          <div className="brand" style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <div className="brand brand-centered" style={{ marginBottom: "1.5rem" }}>
+            <Logomark size={40} />
             <h1>jobfit</h1>
             <p className="tagline">Fewer, better, real job matches.</p>
           </div>
@@ -192,9 +195,12 @@ export default function Home() {
   return (
     <main className="container">
       <header className="app-header">
-        <div className="brand">
-          <h1>jobfit</h1>
-          <p className="tagline">Executive shortlist</p>
+        <div className="brand brand-row">
+          <Logomark size={36} />
+          <div>
+            <h1>jobfit</h1>
+            <p className="tagline">Executive shortlist</p>
+          </div>
         </div>
         <div className="header-actions">
           <span className="user-email">{session.user.email}</span>
@@ -213,17 +219,30 @@ export default function Home() {
       ) : (
         stats && (
           <div className="stat-grid">
-            <StatTile label="Shortlist size" value={String(stats.count)} subtitle="active matches" />
-            <StatTile label="Avg. fit" value={`${stats.avgFit}%`} subtitle={`across ${stats.count} roles`} />
+            <StatTile
+              label="Shortlist size"
+              value={String(stats.count)}
+              subtitle="active matches"
+              icon={<ListIcon />}
+            />
+            <StatTile
+              label="Avg. fit"
+              value={`${stats.avgFit}%`}
+              subtitle={`across ${stats.count} roles`}
+              icon={<TargetIcon />}
+            />
             <StatTile
               label="Top match"
               value={`${stats.topFit}%`}
               subtitle={`${stats.topTitle} · ${stats.topCompany}`}
+              icon={<TrophyIcon />}
+              accent
             />
             <StatTile
               label="Follow-ups due"
               value={String(followUpCount)}
               subtitle={followUpCount > 0 ? "applied 7+ days ago" : `${stats.companyCount} companies`}
+              icon={<BellIcon />}
             />
           </div>
         )
@@ -247,12 +266,15 @@ export default function Home() {
           <h2 style={{ margin: 0 }}>Your shortlist</h2>
           {matches.length > 0 && (
             <div className="toolbar-controls">
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search role or company..."
-                className="control-input"
-              />
+              <div className="search-input-wrap">
+                <SearchIcon size={15} className="search-input-icon" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search role or company..."
+                  className="control-input search-input"
+                />
+              </div>
               <div className="preset-group">
                 {LOCATION_PRESETS.map((preset) => (
                   <button
@@ -319,6 +341,8 @@ export default function Home() {
           />
         )}
       </div>
+
+      {!loadingData && <BrowseMatches resumeText={resumeText} accessToken={session.access_token} />}
     </main>
   );
 }

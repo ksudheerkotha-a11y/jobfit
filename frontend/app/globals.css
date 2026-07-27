@@ -19,6 +19,10 @@
   --good-text: #006300;
   --warning: #fab219;
   --critical: #d03b3b;
+  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.04);
+  --shadow-card: 0 1px 2px rgba(11, 11, 11, 0.04), 0 10px 28px -14px rgba(11, 11, 11, 0.14);
+  --shadow-card-hover: 0 1px 2px rgba(11, 11, 11, 0.05), 0 16px 36px -14px rgba(11, 11, 11, 0.18);
+  --shadow-accent: 0 1px 2px rgba(11, 11, 11, 0.04), 0 12px 28px -12px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,6 +47,10 @@
     --good-text: #0ca30c;
     --warning: #fab219;
     --critical: #e66767;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 10px 28px -14px rgba(0, 0, 0, 0.5);
+    --shadow-card-hover: 0 1px 2px rgba(0, 0, 0, 0.25), 0 16px 36px -14px rgba(0, 0, 0, 0.6);
+    --shadow-accent: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 28px -12px color-mix(in srgb, var(--accent) 45%, transparent);
   }
 }
 
@@ -67,6 +75,10 @@
   --good-text: #0ca30c;
   --warning: #fab219;
   --critical: #e66767;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 10px 28px -14px rgba(0, 0, 0, 0.5);
+  --shadow-card-hover: 0 1px 2px rgba(0, 0, 0, 0.25), 0 16px 36px -14px rgba(0, 0, 0, 0.6);
+  --shadow-accent: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 28px -12px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 * {
@@ -76,7 +88,9 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: var(--page-plane);
+  background:
+    radial-gradient(1200px 480px at 50% -120px, color-mix(in srgb, var(--accent) 7%, transparent), transparent),
+    var(--page-plane);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
@@ -99,22 +113,42 @@ body {
 .app-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
+  align-items: center;
+  margin-bottom: 2.25rem;
+  padding-bottom: 1.25rem;
   gap: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .brand h1 {
   margin: 0;
   font-size: 1.375rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .brand .tagline {
-  margin: 0.15rem 0 0;
+  margin: 0.1rem 0 0;
   color: var(--text-secondary);
   font-size: 0.875rem;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+
+.logomark-bg {
+  fill: var(--accent);
 }
 
 .header-actions {
@@ -135,15 +169,19 @@ button {
   font: inherit;
   padding: 0.5rem 1rem;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--surface-card);
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--accent);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
@@ -155,15 +193,27 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
+  box-shadow: var(--shadow-sm);
 }
 
 button.primary:hover:not(:disabled) {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 button.ghost {
   background: transparent;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 textarea,
@@ -199,8 +249,10 @@ input:focus {
 .card {
   background: var(--surface-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease;
 }
 
 .card + .card {
@@ -211,6 +263,18 @@ input:focus {
   margin: 0 0 0.25rem;
   font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.card-title-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-title-icon svg {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .card-header {
@@ -218,6 +282,10 @@ input:focus {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
+}
+
+.card-header:hover .chevron {
+  color: var(--accent);
 }
 
 .card-header .chevron {
@@ -248,8 +316,48 @@ input:focus {
 .stat-tile {
   background: var(--surface-card);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.stat-tile:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.stat-tile-accent {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--accent) 10%, var(--surface-card)),
+    var(--surface-card) 60%
+  );
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: var(--shadow-accent);
+}
+
+.stat-tile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-strong);
+  flex-shrink: 0;
+}
+
+.stat-tile-accent .stat-icon {
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .stat-label {
@@ -262,9 +370,9 @@ input:focus {
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
@@ -430,6 +538,23 @@ select.control-input {
   cursor: pointer;
 }
 
+.search-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-input-icon {
+  position: absolute;
+  left: 0.55rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 1.9rem;
+}
+
 /* ---------- Status badges & row actions ---------- */
 
 .badge {
@@ -520,6 +645,7 @@ select.control-input {
 .skeleton-tile {
   height: 92px;
   border: 1px solid var(--border);
+  border-radius: 14px;
 }
 
 .skeleton-line {
