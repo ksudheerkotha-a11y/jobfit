@@ -838,3 +838,16 @@ select.control-input {
   color: var(--accent-strong);
   flex-shrink: 0;
 }
+
+/* ---------- Job compare table ---------- */
+
+.compare-table th,
+.compare-table .compare-label {
+  font-weight: 600;
+}
+
+.compare-table .compare-label {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}

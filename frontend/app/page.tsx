@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { APPLIED_STATUSES, Contact, MatchedJobRow, MatchStatus } from "@/lib/types";
+import { APPLIED_STATUSES, Contact, JobRow, MatchedJobRow, MatchStatus, SavedJob } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
 import { ResumeForm } from "@/components/ResumeForm";
 import { MatchesTable } from "@/components/MatchesTable";
@@ -27,6 +27,8 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { logActivity } from "@/lib/logActivity";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { ApplicationsChart } from "@/components/ApplicationsChart";
+import { JobSearch } from "@/components/JobSearch";
+import { SavedJobs } from "@/components/SavedJobs";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -53,12 +55,16 @@ type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 const MATCHES_SELECT =
   "job_id, fit_score, missing_skills, reasons, status, notes, applied_at, jobs(title, company, location, apply_url, posted_at, description)";
 
+const SAVED_JOBS_SELECT =
+  "id, job_id, created_at, jobs(id, title, company, location, description, apply_url, posted_at)";
+
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [resumeText, setResumeText] = useState("");
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [locationFilter, setLocationFilter] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortValue>("fit");
@@ -90,10 +96,12 @@ export default function Home() {
       supabase.from("resumes").select("resume_text").eq("user_id", session.user.id).maybeSingle(),
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
       supabase.from("contacts").select("id, name, company, context").order("name"),
-    ]).then(([resumeRes, matchesRes, contactsRes]) => {
+      supabase.from("saved_jobs").select(SAVED_JOBS_SELECT).order("created_at", { ascending: false }),
+    ]).then(([resumeRes, matchesRes, contactsRes, savedJobsRes]) => {
       setResumeText(resumeRes.data?.resume_text ?? "");
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setContacts((contactsRes.data as Contact[]) ?? []);
+      setSavedJobs((savedJobsRes.data as unknown as SavedJob[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
@@ -140,6 +148,23 @@ export default function Home() {
       title: job?.jobs?.title,
     });
   }
+
+  function handleSaveToggle(jobId: string, job: JobRow, saved: boolean) {
+    if (saved) {
+      setSavedJobs((prev) => [
+        { id: Date.now(), job_id: jobId, created_at: new Date().toISOString(), jobs: job },
+        ...prev,
+      ]);
+    } else {
+      setSavedJobs((prev) => prev.filter((s) => s.job_id !== jobId));
+    }
+  }
+
+  function handleUnsave(jobId: string) {
+    setSavedJobs((prev) => prev.filter((s) => s.job_id !== jobId));
+  }
+
+  const savedJobIds = useMemo(() => new Set(savedJobs.map((s) => s.job_id)), [savedJobs]);
 
   const dismissedCount = useMemo(() => matches.filter((m) => m.status === "dismissed").length, [matches]);
 
@@ -468,6 +493,13 @@ export default function Home() {
       </div>
 
       {!loadingData && <BrowseMatches resumeText={resumeText} accessToken={session.access_token} />}
+
+      {!loadingData && (
+        <>
+          <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
+          <SavedJobs userId={session.user.id} savedJobs={savedJobs} onUnsave={handleUnsave} />
+        </>
+      )}
     </main>
   );
 }

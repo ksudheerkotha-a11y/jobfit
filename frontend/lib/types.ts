@@ -52,3 +52,20 @@ export type Contact = {
   company: string;
   context: string;
 };
+
+export type JobRow = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  apply_url: string;
+  posted_at: string | null;
+};
+
+export type SavedJob = {
+  id: number;
+  job_id: string;
+  created_at: string;
+  jobs: JobRow | null;
+};
