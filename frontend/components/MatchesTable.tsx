@@ -1,23 +1,15 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Contact, MatchedJobRow, MatchStatus, STATUS_LABELS } from "@/lib/types";
-import { MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
+import { Contact, MatchedJobRow, MatchStatus, STATUS_LABELS, STATUS_OPTIONS } from "@/lib/types";
+import { ActivityIcon, MailIcon, NoteIcon, SparkleIcon, UsersIcon } from "@/components/icons";
 import { logActivity } from "@/lib/logActivity";
+import { ApplicationTimeline } from "@/components/ApplicationTimeline";
 
 const MAX_VISIBLE_SKILLS = 3;
 const FOLLOW_UP_DAYS = 7;
-const STATUS_OPTIONS: MatchStatus[] = [
-  "new",
-  "applied",
-  "phone_screen",
-  "onsite",
-  "offer",
-  "rejected",
-  "dismissed",
-];
 
-type PanelType = "cover-letter" | "tailor-resume" | "notes" | "referral";
+type PanelType = "cover-letter" | "tailor-resume" | "notes" | "referral" | "timeline";
 type PanelState = { loading: boolean; text: string; error: string | null };
 
 function daysSince(iso: string): number {
@@ -266,6 +258,10 @@ export function MatchesTable({
                             {isPanelOpen("referral") ? "Hide ask" : "Referral ask"}
                           </button>
                         )}
+                        <button type="button" className="ghost icon-btn" onClick={() => togglePanel(i, "timeline")}>
+                          <ActivityIcon size={14} />
+                          {isPanelOpen("timeline") ? "Hide timeline" : "Timeline"}
+                        </button>
                       </div>
                       {m.jobs?.apply_url && (
                         <a className="apply-link" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
@@ -278,7 +274,9 @@ export function MatchesTable({
                 {openPanel?.idx === i && (
                   <tr>
                     <td colSpan={6}>
-                      {openPanel.type === "notes" ? (
+                      {openPanel.type === "timeline" ? (
+                        <ApplicationTimeline userId={userId} jobId={m.job_id} />
+                      ) : openPanel.type === "notes" ? (
                         <div>
                           <textarea
                             rows={4}

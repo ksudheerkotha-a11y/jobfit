@@ -17,6 +17,18 @@ export const STATUS_LABELS: Record<MatchStatus, string> = {
   dismissed: "Dismissed",
 };
 
+// Pipeline order — shared by the table's stage <select> and the Kanban
+// board's columns, so the two views never drift out of sync.
+export const STATUS_OPTIONS: MatchStatus[] = [
+  "new",
+  "applied",
+  "phone_screen",
+  "onsite",
+  "offer",
+  "rejected",
+  "dismissed",
+];
+
 // A match "counts as applied" for follow-up nudging once it's moved past
 // New — including later pipeline stages, since applied_at is set once and
 // never cleared going forward.

@@ -29,6 +29,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { ApplicationsChart } from "@/components/ApplicationsChart";
 import { JobSearch } from "@/components/JobSearch";
 import { SavedJobs } from "@/components/SavedJobs";
+import { KanbanBoard } from "@/components/KanbanBoard";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -69,6 +70,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortValue>("fit");
   const [showDismissed, setShowDismissed] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "board">("table");
   // Starts true (not false) so ResumeForm never mounts with a stale empty
   // initialText before the fetch below resolves — its internal textarea
   // state only initializes once, from its first-render props.
@@ -415,6 +417,24 @@ export default function Home() {
           <h2 style={{ margin: 0 }}>Your shortlist</h2>
           {matches.length > 0 && (
             <div className="toolbar-controls">
+              <div className="preset-group">
+                <button
+                  type="button"
+                  className={viewMode === "table" ? "primary" : "ghost"}
+                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  onClick={() => setViewMode("table")}
+                >
+                  Table
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === "board" ? "primary" : "ghost"}
+                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  onClick={() => setViewMode("board")}
+                >
+                  Board
+                </button>
+              </div>
               <div className="search-input-wrap">
                 <SearchIcon size={15} className="search-input-icon" />
                 <input
@@ -479,6 +499,13 @@ export default function Home() {
           <p className="empty-state">
             No matches match your filters. Try a different search, location, or clear the filters.
           </p>
+        ) : viewMode === "board" ? (
+          <KanbanBoard
+            matches={visibleMatches}
+            userId={session.user.id}
+            contacts={contacts}
+            onStatusChange={handleStatusChange}
+          />
         ) : (
           <MatchesTable
             matches={visibleMatches}
