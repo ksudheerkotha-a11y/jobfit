@@ -11,6 +11,7 @@ import { StatTile } from "@/components/StatTile";
 import { ContactsManager } from "@/components/ContactsManager";
 import { BellIcon, ListIcon, Logomark, SearchIcon, TargetIcon, TrophyIcon } from "@/components/icons";
 import { BrowseMatches } from "@/components/BrowseMatches";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 // This page is inherently per-user (auth session, resume, matches) — never
 // static. Also avoids the Supabase client being constructed at build time,
@@ -221,26 +222,26 @@ export default function Home() {
           <div className="stat-grid">
             <StatTile
               label="Shortlist size"
-              value={String(stats.count)}
+              value={<AnimatedNumber value={stats.count} />}
               subtitle="active matches"
               icon={<ListIcon />}
             />
             <StatTile
               label="Avg. fit"
-              value={`${stats.avgFit}%`}
+              value={<AnimatedNumber value={stats.avgFit} suffix="%" />}
               subtitle={`across ${stats.count} roles`}
               icon={<TargetIcon />}
             />
             <StatTile
               label="Top match"
-              value={`${stats.topFit}%`}
+              value={<AnimatedNumber value={stats.topFit} suffix="%" />}
               subtitle={`${stats.topTitle} · ${stats.topCompany}`}
               icon={<TrophyIcon />}
               accent
             />
             <StatTile
               label="Follow-ups due"
-              value={String(followUpCount)}
+              value={<AnimatedNumber value={followUpCount} />}
               subtitle={followUpCount > 0 ? "applied 7+ days ago" : `${stats.companyCount} companies`}
               icon={<BellIcon />}
             />

@@ -8,7 +8,7 @@ export function StatTile({
   accent,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   subtitle?: string;
   icon?: ReactNode;
   accent?: boolean;
