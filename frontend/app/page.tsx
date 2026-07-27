@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { APPLIED_STATUSES, Contact, JobRow, MATCHES_SELECT, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
+import { APPLIED_STATUSES, Contact, Interview, JobRow, MATCHES_SELECT, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
+import Link from "next/link";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
 import { ResumeCenter } from "@/components/ResumeCenter";
@@ -63,6 +64,7 @@ export default function Home() {
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([]);
   const [locationFilter, setLocationFilter] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortValue>("fit");
@@ -83,7 +85,13 @@ export default function Home() {
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
       supabase.from("contacts").select("id, name, company, context").order("name"),
       supabase.from("saved_jobs").select(SAVED_JOBS_SELECT).order("created_at", { ascending: false }),
-    ]).then(async ([legacyResumeRes, versionsRes, matchesRes, contactsRes, savedJobsRes]) => {
+      supabase
+        .from("interviews")
+        .select("*")
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(3),
+    ]).then(async ([legacyResumeRes, versionsRes, matchesRes, contactsRes, savedJobsRes, interviewsRes]) => {
       let versions = (versionsRes.data as ResumeVersion[]) ?? [];
 
       // One-time backfill: users from before Phase 5 have their resume only
@@ -103,6 +111,7 @@ export default function Home() {
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setContacts((contactsRes.data as Contact[]) ?? []);
       setSavedJobs((savedJobsRes.data as unknown as SavedJob[]) ?? []);
+      setUpcomingInterviews((interviewsRes.data as Interview[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
@@ -469,6 +478,37 @@ export default function Home() {
               </a>
             )}
           </div>
+        </div>
+      )}
+
+      {!loadingData && upcomingInterviews.length > 0 && (
+        <div className="card">
+          <div className="card-header-static">
+            <h2 className="card-title-icon" style={{ margin: 0 }}>
+              <CalendarIcon size={17} />
+              Upcoming interviews
+            </h2>
+            <Link href="/interviews" className="icon-link">
+              View all →
+            </Link>
+          </div>
+          <ul className="activity-list" style={{ marginTop: "0.75rem" }}>
+            {upcomingInterviews.map((iv) => (
+              <li key={iv.id} className="activity-row">
+                <span className="activity-text">
+                  {iv.company} — {iv.role}
+                </span>
+                <span className="activity-time">
+                  {new Date(iv.scheduled_at as string).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

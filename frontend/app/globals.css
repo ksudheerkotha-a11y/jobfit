@@ -344,6 +344,14 @@ input:focus {
   cursor: pointer;
 }
 
+.card-header-static {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .card-header:hover .chevron {
   color: var(--accent);
 }

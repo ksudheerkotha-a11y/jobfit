@@ -8,9 +8,10 @@ import { Logomark } from "@/components/icons";
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/interviews", label: "Interviews" },
 ] as const;
 
-export function AppHeader({ session, active }: { session: Session; active: "/" | "/analytics" }) {
+export function AppHeader({ session, active }: { session: Session; active: "/" | "/analytics" | "/interviews" }) {
   return (
     <header className="app-header">
       <div className="brand brand-row">

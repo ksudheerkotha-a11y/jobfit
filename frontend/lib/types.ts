@@ -87,6 +87,36 @@ export type SavedJob = {
   jobs: JobRow | null;
 };
 
+export type InterviewStage = "phone_screen" | "technical" | "onsite" | "final_round" | "other";
+
+export const INTERVIEW_STAGE_LABELS: Record<InterviewStage, string> = {
+  phone_screen: "Phone screen",
+  technical: "Technical",
+  onsite: "Onsite",
+  final_round: "Final round",
+  other: "Other",
+};
+
+export const INTERVIEW_STAGE_OPTIONS: InterviewStage[] = [
+  "phone_screen",
+  "technical",
+  "onsite",
+  "final_round",
+  "other",
+];
+
+export type Interview = {
+  id: number;
+  job_id: string | null;
+  company: string;
+  role: string;
+  stage: string;
+  scheduled_at: string | null;
+  meeting_link: string | null;
+  notes: string;
+  created_at: string;
+};
+
 export type ResumeVersion = {
   id: number;
   title: string;

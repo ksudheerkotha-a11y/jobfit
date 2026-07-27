@@ -20,6 +20,9 @@ const ACTION_LABELS: Record<string, (m: Record<string, unknown>) => string> = {
   resume_version_set_default: (m) => `Set "${m.title ?? "a resume"}" as your default resume`,
   resume_version_deleted: (m) => `Deleted resume version "${m.title ?? "Untitled"}"`,
   resume_analyzed: (m) => `Analyzed "${m.title ?? "a resume"}" — ATS score ${m.atsScore ?? "?"}`,
+  interview_scheduled: (m) => `Scheduled a ${m.stage ?? "interview"} with ${m.company ?? "a company"}`,
+  interview_updated: (m) => `Updated the interview with ${m.company ?? "a company"}`,
+  interview_deleted: (m) => `Removed the interview with ${m.company ?? "a company"}`,
 };
 
 export function describeActivity(row: ActivityRow): string {

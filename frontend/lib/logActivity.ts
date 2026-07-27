@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
-export type EntityType = "application" | "resume" | "cover_letter" | "job";
+export type EntityType = "application" | "resume" | "cover_letter" | "job" | "interview";
 
 /** Fire-and-forget: an activity log write failing should never block the
  * real action (status change, resume save, ...) it's recording. RLS scopes
