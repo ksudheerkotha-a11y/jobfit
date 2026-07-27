@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { APPLIED_STATUSES, Contact, JobRow, MatchedJobRow, MatchStatus, SavedJob } from "@/lib/types";
+import { APPLIED_STATUSES, Contact, JobRow, MatchedJobRow, MatchStatus, ResumeVersion, SavedJob } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
-import { ResumeForm } from "@/components/ResumeForm";
+import { ResumeCenter } from "@/components/ResumeCenter";
 import { MatchesTable } from "@/components/MatchesTable";
 import { StatTile } from "@/components/StatTile";
 import { ContactsManager } from "@/components/ContactsManager";
@@ -62,7 +62,7 @@ const SAVED_JOBS_SELECT =
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [resumeText, setResumeText] = useState("");
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
@@ -71,9 +71,8 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<SortValue>("fit");
   const [showDismissed, setShowDismissed] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "board">("table");
-  // Starts true (not false) so ResumeForm never mounts with a stale empty
-  // initialText before the fetch below resolves — its internal textarea
-  // state only initializes once, from its first-render props.
+  // Starts true (not false) so the dashboard renders its loading skeleton
+  // rather than an empty state before the fetch below resolves.
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -96,17 +95,43 @@ export default function Home() {
 
     Promise.all([
       supabase.from("resumes").select("resume_text").eq("user_id", session.user.id).maybeSingle(),
+      supabase.from("resume_versions").select("*").order("created_at", { ascending: false }),
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
       supabase.from("contacts").select("id, name, company, context").order("name"),
       supabase.from("saved_jobs").select(SAVED_JOBS_SELECT).order("created_at", { ascending: false }),
-    ]).then(([resumeRes, matchesRes, contactsRes, savedJobsRes]) => {
-      setResumeText(resumeRes.data?.resume_text ?? "");
+    ]).then(async ([legacyResumeRes, versionsRes, matchesRes, contactsRes, savedJobsRes]) => {
+      let versions = (versionsRes.data as ResumeVersion[]) ?? [];
+
+      // One-time backfill: users from before Phase 5 have their resume only
+      // in the legacy `resumes` table. Give them a matching default version
+      // instead of starting the Resume Center empty.
+      const legacyText = legacyResumeRes.data?.resume_text ?? "";
+      if (versions.length === 0 && legacyText.trim()) {
+        const { data: migrated } = await supabase
+          .from("resume_versions")
+          .insert({ user_id: session.user.id, title: "My resume", resume_text: legacyText, is_default: true })
+          .select("*")
+          .single();
+        if (migrated) versions = [migrated as ResumeVersion];
+      }
+
+      setResumeVersions(versions);
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setContacts((contactsRes.data as Contact[]) ?? []);
       setSavedJobs((savedJobsRes.data as unknown as SavedJob[]) ?? []);
       setLoadingData(false);
     });
   }, [session]);
+
+  // The legacy `resumes` table is what the Python matcher still reads —
+  // keep it mirrored to whichever version is default so scoring never
+  // requires touching the ingestion pipeline (see README / Phase 1 decision).
+  async function syncLegacyResume(text: string) {
+    if (!session) return;
+    await supabase
+      .from("resumes")
+      .upsert({ user_id: session.user.id, resume_text: text, updated_at: new Date().toISOString() });
+  }
 
   async function handleStatusChange(jobId: string, status: MatchStatus) {
     if (!session) return;
@@ -164,6 +189,91 @@ export default function Home() {
 
   function handleUnsave(jobId: string) {
     setSavedJobs((prev) => prev.filter((s) => s.job_id !== jobId));
+  }
+
+  const defaultResumeVersion = useMemo(
+    () => resumeVersions.find((v) => v.is_default),
+    [resumeVersions]
+  );
+  const resumeText = defaultResumeVersion?.resume_text ?? "";
+
+  async function handleAddResumeVersion(title: string, text: string) {
+    if (!session) return;
+    const makeDefault = resumeVersions.length === 0;
+    const { data, error } = await supabase
+      .from("resume_versions")
+      .insert({ user_id: session.user.id, title, resume_text: text, is_default: makeDefault })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    const inserted = data as ResumeVersion;
+    setResumeVersions((prev) => [inserted, ...prev]);
+    if (makeDefault) await syncLegacyResume(text);
+    logActivity(session.user.id, "resume", String(inserted.id), "resume_version_added", { title });
+  }
+
+  async function handleSetDefaultResumeVersion(id: number) {
+    if (!session) return;
+    const target = resumeVersions.find((v) => v.id === id);
+    if (!target || target.is_default) return;
+
+    await supabase.from("resume_versions").update({ is_default: false }).eq("user_id", session.user.id).eq("is_default", true);
+    await supabase.from("resume_versions").update({ is_default: true }).eq("id", id);
+
+    setResumeVersions((prev) => prev.map((v) => ({ ...v, is_default: v.id === id })));
+    await syncLegacyResume(target.resume_text);
+    logActivity(session.user.id, "resume", String(id), "resume_version_set_default", { title: target.title });
+  }
+
+  async function handleUpdateResumeVersion(id: number, text: string) {
+    if (!session) return;
+    const target = resumeVersions.find((v) => v.id === id);
+    await supabase.from("resume_versions").update({ resume_text: text }).eq("id", id);
+    setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, resume_text: text } : v)));
+    if (target?.is_default) await syncLegacyResume(text);
+    logActivity(session.user.id, "resume", String(id), "resume_updated", {});
+  }
+
+  async function handleDeleteResumeVersion(id: number) {
+    if (!session) return;
+    const target = resumeVersions.find((v) => v.id === id);
+    if (!target || target.is_default || resumeVersions.length <= 1) return;
+
+    await supabase.from("resume_versions").delete().eq("id", id);
+    setResumeVersions((prev) => prev.filter((v) => v.id !== id));
+    logActivity(session.user.id, "resume", String(id), "resume_version_deleted", { title: target.title });
+  }
+
+  async function handleAnalyzeResumeVersion(id: number, atsScore: number, keywords: string[]) {
+    if (!session) return;
+    await supabase.from("resume_versions").update({ ats_score: atsScore, keywords }).eq("id", id);
+    setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ats_score: atsScore, keywords } : v)));
+    const target = resumeVersions.find((v) => v.id === id);
+    logActivity(session.user.id, "resume", String(id), "resume_analyzed", { title: target?.title, atsScore });
+  }
+
+  async function handleSaveTailoredResume(text: string, jobTitle: string, company: string) {
+    if (!session) return;
+    const title = `Tailored — ${jobTitle} @ ${company}`;
+    const { data, error } = await supabase
+      .from("resume_versions")
+      .insert({
+        user_id: session.user.id,
+        title,
+        resume_text: text,
+        source_resume_id: defaultResumeVersion?.id ?? null,
+        is_default: false,
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+
+    setResumeVersions((prev) => [data as ResumeVersion, ...prev]);
+    logActivity(session.user.id, "resume", String((data as ResumeVersion).id), "resume_version_added", {
+      title,
+      tailored: true,
+    });
   }
 
   const savedJobIds = useMemo(() => new Set(savedJobs.map((s) => s.job_id)), [savedJobs]);
@@ -405,7 +515,15 @@ export default function Home() {
           <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
         </div>
       ) : (
-        <ResumeForm userId={session.user.id} initialText={resumeText} />
+        <ResumeCenter
+          accessToken={session.access_token}
+          versions={resumeVersions}
+          onAdd={handleAddResumeVersion}
+          onSetDefault={handleSetDefaultResumeVersion}
+          onUpdate={handleUpdateResumeVersion}
+          onDelete={handleDeleteResumeVersion}
+          onAnalyzed={handleAnalyzeResumeVersion}
+        />
       )}
 
       {!loadingData && (
@@ -515,6 +633,7 @@ export default function Home() {
             contacts={contacts}
             onStatusChange={handleStatusChange}
             onNotesChange={handleNotesChange}
+            onSaveTailoredResume={handleSaveTailoredResume}
           />
         )}
       </div>

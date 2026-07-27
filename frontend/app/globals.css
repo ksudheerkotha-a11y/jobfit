@@ -782,6 +782,36 @@ select.control-input {
   flex-shrink: 0;
 }
 
+/* ---------- Resume Center ---------- */
+
+.resume-version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.resume-version-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: var(--page-plane);
+}
+
+.resume-version-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.resume-version-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+
 /* ---------- Applications chart ---------- */
 
 .chart-header {

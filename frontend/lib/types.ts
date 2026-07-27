@@ -81,3 +81,15 @@ export type SavedJob = {
   created_at: string;
   jobs: JobRow | null;
 };
+
+export type ResumeVersion = {
+  id: number;
+  title: string;
+  version_name: string | null;
+  resume_text: string;
+  source_resume_id: number | null;
+  ats_score: number | null;
+  keywords: string[];
+  is_default: boolean;
+  created_at: string;
+};

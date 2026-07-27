@@ -28,6 +28,7 @@ export function MatchesTable({
   contacts,
   onStatusChange,
   onNotesChange,
+  onSaveTailoredResume,
 }: {
   matches: MatchedJobRow[];
   resumeText: string;
@@ -36,10 +37,12 @@ export function MatchesTable({
   contacts: Contact[];
   onStatusChange: (jobId: string, status: MatchStatus) => void;
   onNotesChange: (jobId: string, notes: string) => void;
+  onSaveTailoredResume: (text: string, jobTitle: string, company: string) => Promise<void>;
 }) {
   const [openPanel, setOpenPanel] = useState<{ idx: number; type: PanelType } | null>(null);
   const [panels, setPanels] = useState<Record<string, PanelState>>({});
   const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
+  const [savedTailorIdx, setSavedTailorIdx] = useState<number | null>(null);
 
   function panelKey(idx: number, type: PanelType) {
     return `${idx}:${type}`;
@@ -325,6 +328,18 @@ export function MatchesTable({
                                 >
                                   Regenerate
                                 </button>
+                                {openPanel.type === "tailor-resume" && (
+                                  <button
+                                    type="button"
+                                    className="ghost"
+                                    onClick={async () => {
+                                      await onSaveTailoredResume(activePanel.text, m.jobs?.title ?? "role", m.jobs?.company ?? "company");
+                                      setSavedTailorIdx(i);
+                                    }}
+                                  >
+                                    {savedTailorIdx === i ? "Saved to Resume Center ✓" : "Save as resume version"}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           )}

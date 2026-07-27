@@ -16,6 +16,10 @@ const ACTION_LABELS: Record<string, (m: Record<string, unknown>) => string> = {
   referral_drafted: (m) => `Drafted a referral ask to ${m.contact ?? "a contact"} at ${m.company ?? "?"}`,
   job_saved: (m) => `Saved ${m.title ?? "a job"} at ${m.company ?? "?"}`,
   job_unsaved: (m) => `Removed ${m.title ?? "a job"} at ${m.company ?? "?"} from saved`,
+  resume_version_added: (m) => (m.tailored ? `Saved a tailored resume: "${m.title ?? "Untitled"}"` : `Added a resume version: "${m.title ?? "Untitled"}"`),
+  resume_version_set_default: (m) => `Set "${m.title ?? "a resume"}" as your default resume`,
+  resume_version_deleted: (m) => `Deleted resume version "${m.title ?? "Untitled"}"`,
+  resume_analyzed: (m) => `Analyzed "${m.title ?? "a resume"}" — ATS score ${m.atsScore ?? "?"}`,
 };
 
 export function describeActivity(row: ActivityRow): string {
