@@ -204,6 +204,75 @@ create table if not exists auto_apply_queue (
 create index if not exists auto_apply_queue_user_status_idx
   on auto_apply_queue (user_id, status, created_at desc);
 
+-- Structured profile data (Profile page). One row per user for identity +
+-- "application defaults" (the fields a real ATS autofill would need —
+-- work authorization, relocation, background — captured now so a future
+-- autofill integration has real data to read, not because jobfit submits
+-- anything with it today). Dates on education/experience are free text
+-- ("2020", "Jun 2022", "Present") rather than a date type, since resumes
+-- rarely give full ISO dates and forcing one would just reject real input.
+create table if not exists profile (
+  user_id               uuid primary key references auth.users(id) on delete cascade,
+  full_name             text not null default '',
+  open_to_work          boolean not null default true,
+  location              text not null default '',
+  phone                 text not null default '',
+  professional_summary  text not null default '',
+  work_authorized       boolean not null default false,
+  needs_sponsorship     boolean not null default false,
+  in_person_ok          boolean not null default false,
+  can_relocate          boolean not null default false,
+  start_immediately     boolean not null default false,
+  has_transport         boolean not null default false,
+  needs_accommodations  boolean not null default false,
+  prior_employee        boolean not null default false,
+  gov_clearance         boolean not null default false,
+  gov_ties              boolean not null default false,
+  updated_at            timestamptz not null default now()
+);
+
+create table if not exists profile_education (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  school      text not null default '',
+  degree      text not null default '',
+  field       text not null default '',
+  start_date  text not null default '',
+  end_date    text not null default '',
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists profile_education_user_idx on profile_education (user_id, sort_order);
+
+create table if not exists profile_experience (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  title       text not null default '',
+  company     text not null default '',
+  location    text not null default '',
+  start_date  text not null default '',
+  end_date    text not null default '',
+  bullets     text[] not null default '{}',
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists profile_experience_user_idx on profile_experience (user_id, sort_order);
+
+-- One row per skill, not a text[] column — lets the UI group/reorder by
+-- category and add/remove a single skill without rewriting a whole array.
+create table if not exists profile_skills (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  category    text not null default 'Skills',
+  skill       text not null,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists profile_skills_user_idx on profile_skills (user_id, category, sort_order);
+
 -- Row Level Security. The service_role key (used by ingest.py / match.py)
 -- bypasses RLS entirely, so batch writes are unaffected by the policies below.
 
@@ -220,6 +289,10 @@ alter table notifications enable row level security;
 alter table activity_log enable row level security;
 alter table auto_apply_settings enable row level security;
 alter table auto_apply_queue enable row level security;
+alter table profile enable row level security;
+alter table profile_education enable row level security;
+alter table profile_experience enable row level security;
+alter table profile_skills enable row level security;
 
 -- Job listings are not sensitive; anyone (including the frontend's anon key)
 -- can read them. Only the service_role key can write.
@@ -315,5 +388,27 @@ create policy "users read their own auto-apply queue"
 
 create policy "users update their own auto-apply queue"
   on auto_apply_queue for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Full CRUD by owner: profile data is theirs end to end, same as resume
+-- versions or contacts.
+create policy "users manage their own profile"
+  on profile for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "users manage their own education"
+  on profile_education for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "users manage their own experience"
+  on profile_experience for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "users manage their own skills"
+  on profile_skills for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);

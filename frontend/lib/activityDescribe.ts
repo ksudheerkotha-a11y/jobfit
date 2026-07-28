@@ -25,6 +25,8 @@ const ACTION_LABELS: Record<string, (m: Record<string, unknown>) => string> = {
   interview_deleted: (m) => `Removed the interview with ${m.company ?? "a company"}`,
   followup_drafted: (m) => `Drafted a follow-up for ${m.title ?? "a role"} at ${m.company ?? "?"}`,
   interview_prepped: (m) => `Prepped for the ${m.stage ?? "interview"} with ${m.company ?? "a company"}`,
+  profile_updated: () => "Updated your profile",
+  profile_imported_from_resume: () => "Imported profile details from your resume",
   auto_apply_queue_dismissed: (m) => `Dismissed the auto-drafted application for ${m.title ?? "a role"} at ${m.company ?? "?"}`,
 };
 

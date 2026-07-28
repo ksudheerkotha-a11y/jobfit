@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: "/networking", label: "Networking" },
   { href: "/resume", label: "Resume" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/profile", label: "Profile" },
 ] as const;
 
 export type ActiveRoute = (typeof NAV_LINKS)[number]["href"];

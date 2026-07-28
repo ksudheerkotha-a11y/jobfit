@@ -180,3 +180,50 @@ export type AutoApplyQueueItem = {
     description: string;
   } | null;
 };
+
+export type Profile = {
+  full_name: string;
+  open_to_work: boolean;
+  location: string;
+  phone: string;
+  professional_summary: string;
+  work_authorized: boolean;
+  needs_sponsorship: boolean;
+  in_person_ok: boolean;
+  can_relocate: boolean;
+  start_immediately: boolean;
+  has_transport: boolean;
+  needs_accommodations: boolean;
+  prior_employee: boolean;
+  gov_clearance: boolean;
+  gov_ties: boolean;
+  updated_at: string;
+};
+
+export type EducationEntry = {
+  id: number;
+  school: string;
+  degree: string;
+  field: string;
+  start_date: string;
+  end_date: string;
+  sort_order: number;
+};
+
+export type ExperienceEntry = {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  bullets: string[];
+  sort_order: number;
+};
+
+export type SkillEntry = {
+  id: number;
+  category: string;
+  skill: string;
+  sort_order: number;
+};
