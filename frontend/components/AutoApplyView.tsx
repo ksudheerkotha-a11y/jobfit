@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { AutoApplyQueueItem, AutoApplySettings, QUALITY_TIERS, ResumeVersion } from "@/lib/types";
 import { SparkleIcon } from "@/components/icons";
+import { JobCard } from "@/components/JobCard";
+import { relativeTime } from "@/lib/activityDescribe";
 
 const MAX_DAILY_CAP = 20;
 
@@ -181,59 +183,70 @@ export function AutoApplyView({
             Nothing queued yet. {settings.enabled ? "Click “Run now” or check back after the next scheduled check." : "Enable Auto Apply above to start filling this in."}
           </p>
         ) : (
-          <div className="resume-version-list" style={{ marginTop: "0.85rem" }}>
-            {queued.map((item) => {
+          <div className="job-grid" style={{ marginTop: "0.85rem" }}>
+            {queued.map((item, i) => {
               const expanded = expandedId === item.id;
               return (
-                <div className="resume-version-card" key={item.id}>
-                  <div className="resume-version-top">
-                    <div>
-                      <span className="title" style={{ marginRight: "0.4rem" }}>{item.jobs?.title}</span>
-                      <p className="hint" style={{ margin: "0.2rem 0 0" }}>{item.jobs?.company} · {item.jobs?.location}</p>
-                    </div>
-                    <span className="hint" style={{ margin: 0 }}>{new Date(item.created_at).toLocaleDateString("en-US")}</span>
-                  </div>
-
-                  <div className="resume-version-actions">
-                    <button type="button" className="ghost" onClick={() => setExpandedId(expanded ? null : item.id)}>
-                      {expanded ? "Hide drafts" : "Review drafts"}
-                    </button>
-                    {item.jobs?.apply_url && (
-                      <a className="ghost" href={item.jobs.apply_url} target="_blank" rel="noreferrer">
-                        Open apply page
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      className="primary"
-                      disabled={busyId === item.id}
-                      onClick={() => handleAction(item, onMarkApplied)}
-                    >
-                      Mark as applied
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost"
-                      disabled={busyId === item.id}
-                      onClick={() => handleAction(item, onDismiss)}
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-
+                <Fragment key={item.id}>
+                  <JobCard
+                    index={i}
+                    postedLabel={`Queued ${relativeTime(item.created_at)}`}
+                    title={item.jobs?.title ?? ""}
+                    company={item.jobs?.company ?? ""}
+                    location={item.jobs?.location}
+                    actions={
+                      <>
+                        <button type="button" className="ghost" onClick={() => setExpandedId(expanded ? null : item.id)}>
+                          {expanded ? "Hide drafts" : "Review drafts"}
+                        </button>
+                        {item.jobs?.apply_url && (
+                          <a className="ghost" href={item.jobs.apply_url} target="_blank" rel="noreferrer">
+                            Open apply page
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          className="primary"
+                          disabled={busyId === item.id}
+                          onClick={() => handleAction(item, onMarkApplied)}
+                        >
+                          Mark as applied
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          disabled={busyId === item.id}
+                          onClick={() => handleAction(item, onDismiss)}
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    }
+                  />
                   {expanded && (
-                    <div style={{ marginTop: "0.65rem", display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                      <div>
-                        <p className="hint" style={{ margin: "0 0 0.3rem", fontWeight: 600 }}>Cover letter</p>
-                        <textarea rows={8} defaultValue={item.cover_letter_draft} readOnly />
+                    <div className="job-detail-drawer">
+                      <div className="job-detail-drawer-header">
+                        <div>
+                          <p className="title">{item.jobs?.title}</p>
+                          <p className="company">{item.jobs?.company} · {item.jobs?.location}</p>
+                        </div>
+                        <button type="button" className="ghost" onClick={() => setExpandedId(null)}>
+                          Close
+                        </button>
                       </div>
-                      <div>
-                        <p className="hint" style={{ margin: "0 0 0.3rem", fontWeight: 600 }}>Tailored resume</p>
-                        <textarea rows={8} defaultValue={item.tailored_resume_draft} readOnly />
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                        <div>
+                          <p className="hint" style={{ margin: "0 0 0.3rem", fontWeight: 600 }}>Cover letter</p>
+                          <textarea rows={8} defaultValue={item.cover_letter_draft} readOnly />
+                        </div>
+                        <div>
+                          <p className="hint" style={{ margin: "0 0 0.3rem", fontWeight: 600 }}>Tailored resume</p>
+                          <textarea rows={8} defaultValue={item.tailored_resume_draft} readOnly />
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
+                </Fragment>
               );
             })}
           </div>
