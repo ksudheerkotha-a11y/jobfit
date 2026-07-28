@@ -93,7 +93,12 @@ export default function AutoApply() {
   async function handleSaveSettings(next: Partial<AutoApplySettings>) {
     if (!session) return;
     const merged = { ...settings, ...next };
-    await supabase.from("auto_apply_settings").upsert({ user_id: session.user.id, ...merged });
+    const { error } = await supabase.from("auto_apply_settings").upsert({ user_id: session.user.id, ...merged });
+    // Only reflect the change locally once the write actually succeeded —
+    // otherwise a failed save (RLS, network, whatever) would still show
+    // "Enabled" in the UI while the database, which /api/auto-apply/run
+    // reads from directly, keeps the old value.
+    if (error) throw new Error(error.message);
     setSettings(merged);
     // Clears any leftover "Run now" status message — otherwise a stale
     // "Auto Apply is off" (or any other prior reason) keeps showing after

@@ -36,6 +36,7 @@ export function AutoApplyView({
 }) {
   const [draft, setDraft] = useState(settings);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
@@ -45,8 +46,14 @@ export function AutoApplyView({
 
   async function handleSave() {
     setSaving(true);
-    await onSaveSettings(draft);
-    setSaving(false);
+    setSaveError(null);
+    try {
+      await onSaveSettings(draft);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save settings — try again");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleAction(item: AutoApplyQueueItem, action: (item: AutoApplyQueueItem) => Promise<void>) {
@@ -141,6 +148,11 @@ export function AutoApplyView({
               {running ? "Checking for matches..." : "Run now"}
             </button>
           </div>
+          {saveError && (
+            <p className="error" style={{ margin: 0 }}>
+              {saveError}
+            </p>
+          )}
           {runResult && !running && (
             <p className={runResult.startsWith("Run failed") ? "error" : "hint"} style={{ margin: 0 }}>
               {runResult}
