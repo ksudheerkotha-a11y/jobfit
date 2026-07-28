@@ -1367,9 +1367,8 @@ select.control-input {
 
 .match-card-bottom {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.55rem;
   margin-top: auto;
 }
 
@@ -1390,8 +1389,9 @@ select.control-input {
 
 .match-card-actions {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
-  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .match-card-actions button,
