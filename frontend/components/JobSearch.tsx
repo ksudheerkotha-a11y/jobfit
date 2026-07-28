@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { SearchIcon } from "@/components/icons";
 import { JobRow } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
+import { JobCard } from "@/components/JobCard";
 
 const PAGE_SIZE = 20;
 
@@ -92,7 +93,7 @@ export function JobSearch({
 
       {open && (
         <div style={{ marginTop: "1rem" }}>
-          <form onSubmit={handleSearch} className="toolbar-controls" style={{ marginBottom: "1rem" }}>
+          <form onSubmit={handleSearch} className="filter-bar" style={{ marginBottom: "1rem" }}>
             <div className="search-input-wrap">
               <SearchIcon size={15} className="search-input-icon" />
               <input
@@ -100,7 +101,7 @@ export function JobSearch({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Role or company..."
                 aria-label="Role or company"
-                className="control-input search-input"
+                className="control-input search-input pill-input"
                 style={{ width: 220 }}
               />
             </div>
@@ -109,7 +110,7 @@ export function JobSearch({
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Location..."
               aria-label="Location"
-              className="control-input"
+              className="control-input pill-input"
               style={{ width: 160 }}
             />
             <button type="submit" className="primary" disabled={loading}>
@@ -124,50 +125,37 @@ export function JobSearch({
           )}
 
           {results && results.length > 0 && (
-            <div className="table-wrap">
-              <table className="matches-table browse-table">
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th>Location</th>
-                    <th>Posted</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((job) => {
-                    const saved = savedJobIds.has(job.id);
-                    return (
-                      <tr key={job.id}>
-                        <td className="role-cell">
-                          <div className="title">{job.title}</div>
-                          <div className="company">{job.company}</div>
-                        </td>
-                        <td>{job.location}</td>
-                        <td>{job.posted_at ?? "—"}</td>
-                        <td>
-                          <div className="row-actions-top">
-                            <button
-                              type="button"
-                              className={saved ? "ghost" : "primary"}
-                              style={{ padding: "0.25rem 0.7rem", fontSize: "0.75rem" }}
-                              onClick={() => toggleSave(job)}
-                              disabled={savingId === job.id}
-                            >
-                              {saved ? "Saved" : "Save"}
-                            </button>
-                            {job.apply_url && (
-                              <a className="apply-link" href={job.apply_url} target="_blank" rel="noreferrer">
-                                Apply →
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="job-grid">
+              {results.map((job, i) => {
+                const saved = savedJobIds.has(job.id);
+                return (
+                  <JobCard
+                    key={job.id}
+                    index={i}
+                    postedLabel={job.posted_at ?? "Date unknown"}
+                    title={job.title}
+                    company={job.company}
+                    location={job.location}
+                    actions={
+                      <>
+                        <button
+                          type="button"
+                          className={saved ? "ghost" : "primary"}
+                          onClick={() => toggleSave(job)}
+                          disabled={savingId === job.id}
+                        >
+                          {saved ? "Saved" : "Save"}
+                        </button>
+                        {job.apply_url && (
+                          <a className="ghost" href={job.apply_url} target="_blank" rel="noreferrer">
+                            Apply
+                          </a>
+                        )}
+                      </>
+                    }
+                  />
+                );
+              })}
             </div>
           )}
         </div>

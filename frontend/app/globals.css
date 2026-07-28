@@ -1400,6 +1400,76 @@ select.control-input {
   font-size: 0.75rem;
 }
 
+.match-card-dimmed {
+  opacity: 0.55;
+}
+
+.job-card-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---------- Job grid (Tracker Cards view, Browse jobs) ---------- */
+
+.job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.job-detail-drawer {
+  grid-column: 1 / -1;
+  background: var(--page-plane);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
+}
+
+.job-detail-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.job-detail-drawer-header .title {
+  font-weight: 700;
+  margin: 0 0 0.15rem;
+}
+
+.job-detail-drawer-header .company {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+/* ---------- Premium pill filter bar (Tracker / Browse jobs toolbars) ---------- */
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-pill-btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8125rem;
+}
+
+.pill-input {
+  border-radius: 999px;
+}
+
 /* ---------- Assistant layout + panel ---------- */
 
 .container-wide {

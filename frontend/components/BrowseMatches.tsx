@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { CompassIcon } from "@/components/icons";
+import { JobCard } from "@/components/JobCard";
+import { JobRow } from "@/lib/types";
+import { logActivity } from "@/lib/logActivity";
 
 type BrowseRow = {
   job_id: string;
@@ -13,12 +17,25 @@ type BrowseRow = {
   posted_at: string | null;
 };
 
-export function BrowseMatches({ resumeText, accessToken }: { resumeText: string; accessToken: string }) {
+export function BrowseMatches({
+  resumeText,
+  accessToken,
+  userId,
+  savedJobIds,
+  onSaveToggle,
+}: {
+  resumeText: string;
+  accessToken: string;
+  userId: string;
+  savedJobIds: Set<string>;
+  onSaveToggle: (jobId: string, job: JobRow, saved: boolean) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matches, setMatches] = useState<BrowseRow[] | null>(null);
   const [scanned, setScanned] = useState(0);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   async function handleLoad() {
     setOpen(true);
@@ -45,6 +62,37 @@ export function BrowseMatches({ resumeText, accessToken }: { resumeText: string;
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function toggleSave(row: BrowseRow) {
+    const alreadySaved = savedJobIds.has(row.job_id);
+    setSavingId(row.job_id);
+    setError(null);
+    try {
+      if (alreadySaved) {
+        const { error } = await supabase.from("saved_jobs").delete().eq("user_id", userId).eq("job_id", row.job_id);
+        if (error) throw new Error(error.message);
+        logActivity(userId, "job", row.job_id, "job_unsaved", { title: row.title, company: row.company });
+      } else {
+        const { error } = await supabase.from("saved_jobs").insert({ user_id: userId, job_id: row.job_id });
+        if (error) throw new Error(error.message);
+        logActivity(userId, "job", row.job_id, "job_saved", { title: row.title, company: row.company });
+      }
+      const job: JobRow = {
+        id: row.job_id,
+        title: row.title,
+        company: row.company,
+        location: row.location,
+        description: "",
+        apply_url: row.apply_url,
+        posted_at: row.posted_at,
+      };
+      onSaveToggle(row.job_id, job, !alreadySaved);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save that job");
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -76,38 +124,38 @@ export function BrowseMatches({ resumeText, accessToken }: { resumeText: string;
             </p>
           )}
           {matches && matches.length > 0 && (
-            <div className="table-wrap">
-              <table className="matches-table browse-table">
-                <thead>
-                  <tr>
-                    <th>Match</th>
-                    <th>Role</th>
-                    <th>Location</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matches.map((m) => (
-                    <tr key={m.job_id}>
-                      <td>
-                        <span className="pill">{Math.round(m.score * 100)}%</span>
-                      </td>
-                      <td className="role-cell">
-                        <div className="title">{m.title}</div>
-                        <div className="company">{m.company}</div>
-                      </td>
-                      <td>{m.location}</td>
-                      <td>
+            <div className="job-grid">
+              {matches.map((m, i) => {
+                const saved = savedJobIds.has(m.job_id);
+                return (
+                  <JobCard
+                    key={m.job_id}
+                    index={i}
+                    matchPct={Math.round(m.score * 100)}
+                    postedLabel={m.posted_at ?? "Date unknown"}
+                    title={m.title}
+                    company={m.company}
+                    location={m.location}
+                    actions={
+                      <>
+                        <button
+                          type="button"
+                          className={saved ? "ghost" : "primary"}
+                          onClick={() => toggleSave(m)}
+                          disabled={savingId === m.job_id}
+                        >
+                          {saved ? "Saved" : "Save"}
+                        </button>
                         {m.apply_url && (
-                          <a className="apply-link" href={m.apply_url} target="_blank" rel="noreferrer">
-                            Apply →
+                          <a className="ghost" href={m.apply_url} target="_blank" rel="noreferrer">
+                            Apply
                           </a>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </>
+                    }
+                  />
+                );
+              })}
             </div>
           )}
         </div>

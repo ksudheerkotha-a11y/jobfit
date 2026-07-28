@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { ListIcon } from "@/components/icons";
 import { SavedJob } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
+import { JobCard } from "@/components/JobCard";
 
 const MAX_COMPARE = 3;
 
@@ -68,21 +69,18 @@ export function SavedJobs({
         </p>
       ) : (
         <>
-          <div className="table-wrap">
-            <table className="matches-table browse-table">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Role</th>
-                  <th>Location</th>
-                  <th>Posted</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {savedJobs.map((s) => (
-                  <tr key={s.id}>
-                    <td>
+          <div className="job-grid">
+            {savedJobs.map((s, i) => (
+              <JobCard
+                key={s.id}
+                index={i}
+                postedLabel={s.jobs?.posted_at ?? "Date unknown"}
+                title={s.jobs?.title ?? "(listing removed)"}
+                company={s.jobs?.company ?? ""}
+                location={s.jobs?.location}
+                actions={
+                  <>
+                    <label className="hint" style={{ display: "flex", alignItems: "center", gap: "0.3rem", margin: 0 }}>
                       <input
                         type="checkbox"
                         checked={compareIds.has(s.job_id)}
@@ -90,34 +88,20 @@ export function SavedJobs({
                         disabled={!compareIds.has(s.job_id) && compareIds.size >= MAX_COMPARE}
                         aria-label={`Compare ${s.jobs?.title ?? "job"}`}
                       />
-                    </td>
-                    <td className="role-cell">
-                      <div className="title">{s.jobs?.title ?? "(listing removed)"}</div>
-                      <div className="company">{s.jobs?.company}</div>
-                    </td>
-                    <td>{s.jobs?.location}</td>
-                    <td>{s.jobs?.posted_at ?? "—"}</td>
-                    <td>
-                      <div className="row-actions-top">
-                        <button
-                          type="button"
-                          className="ghost"
-                          style={{ padding: "0.25rem 0.7rem", fontSize: "0.75rem" }}
-                          onClick={() => handleUnsave(s.job_id, s.jobs?.title, s.jobs?.company)}
-                        >
-                          Unsave
-                        </button>
-                        {s.jobs?.apply_url && (
-                          <a className="apply-link" href={s.jobs.apply_url} target="_blank" rel="noreferrer">
-                            Apply →
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      Compare
+                    </label>
+                    <button type="button" className="ghost" onClick={() => handleUnsave(s.job_id, s.jobs?.title, s.jobs?.company)}>
+                      Unsave
+                    </button>
+                    {s.jobs?.apply_url && (
+                      <a className="primary" href={s.jobs.apply_url} target="_blank" rel="noreferrer">
+                        Apply
+                      </a>
+                    )}
+                  </>
+                }
+              />
+            ))}
           </div>
 
           {compareRows.length >= 2 && (

@@ -27,12 +27,12 @@ import {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { ApplicationsChart } from "@/components/ApplicationsChart";
+import { JobCard } from "@/components/JobCard";
 
 // This page is inherently per-user (auth session, matches) — never static.
 export const dynamic = "force-dynamic";
 
 const TOP_MATCHES_COUNT = 5;
-const CARD_TINTS = ["match-card-tint-0", "match-card-tint-1", "match-card-tint-2", "match-card-tint-3", "match-card-tint-4"];
 
 export default function Home() {
   const { session, loadingSession } = useSession();
@@ -343,34 +343,16 @@ export default function Home() {
               {topMatches.map((m, i) => {
                 const pct = Math.round(m.fit_score * 100);
                 return (
-                  <div key={m.job_id} className={`match-card ${CARD_TINTS[i % CARD_TINTS.length]}`}>
-                    <div className="match-card-top">
-                      <span className="match-card-posted">
-                        {m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
-                      </span>
-                      <span
-                        className="match-ring"
-                        style={{ background: `conic-gradient(var(--text-primary) ${pct}%, color-mix(in srgb, var(--text-primary) 14%, transparent) 0)` }}
-                      >
-                        <span className="match-ring-value">{pct}%</span>
-                        <span className="match-ring-label">Match</span>
-                      </span>
-                    </div>
-                    <p className="match-card-title">{m.jobs?.title}</p>
-                    {m.missing_skills.length > 0 && (
-                      <div className="match-card-skills">
-                        {m.missing_skills.map((skill) => (
-                          <span className="pill" key={skill}>
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="match-card-bottom">
-                      <div className="match-card-company">
-                        <span>{m.jobs?.company}</span>
-                      </div>
-                      <div className="match-card-actions">
+                  <JobCard
+                    key={m.job_id}
+                    index={i}
+                    matchPct={pct}
+                    postedLabel={m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
+                    title={m.jobs?.title ?? ""}
+                    company={m.jobs?.company ?? ""}
+                    skills={m.missing_skills}
+                    actions={
+                      <>
                         <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
                           Pass
                         </button>
@@ -379,9 +361,9 @@ export default function Home() {
                             Apply
                           </a>
                         )}
-                      </div>
-                    </div>
-                  </div>
+                      </>
+                    }
+                  />
                 );
               })}
             </div>

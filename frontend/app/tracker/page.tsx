@@ -37,7 +37,7 @@ export default function Tracker() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortValue>("fit");
   const [showDismissed, setShowDismissed] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "board">("table");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "board">("cards");
   const [loadingData, setLoadingData] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -201,20 +201,25 @@ export default function Tracker() {
         <div className="shortlist-toolbar">
           <h2 style={{ margin: 0 }}>Your shortlist</h2>
           {matches.length > 0 && (
-            <div className="toolbar-controls">
+            <div className="filter-bar">
               <div className="preset-group">
                 <button
                   type="button"
-                  className={viewMode === "table" ? "primary" : "ghost"}
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  className={`filter-pill-btn ${viewMode === "cards" ? "primary" : "ghost"}`}
+                  onClick={() => setViewMode("cards")}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  className={`filter-pill-btn ${viewMode === "table" ? "primary" : "ghost"}`}
                   onClick={() => setViewMode("table")}
                 >
                   Table
                 </button>
                 <button
                   type="button"
-                  className={viewMode === "board" ? "primary" : "ghost"}
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  className={`filter-pill-btn ${viewMode === "board" ? "primary" : "ghost"}`}
                   onClick={() => setViewMode("board")}
                 >
                   Board
@@ -226,7 +231,7 @@ export default function Tracker() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search role or company..."
-                  className="control-input search-input"
+                  className="control-input search-input pill-input"
                 />
               </div>
               <div className="preset-group">
@@ -234,8 +239,7 @@ export default function Tracker() {
                   <button
                     key={preset.label}
                     type="button"
-                    className={locationFilter === preset.value ? "primary" : "ghost"}
-                    style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                    className={`filter-pill-btn ${locationFilter === preset.value ? "primary" : "ghost"}`}
                     onClick={() => setLocationFilter(preset.value)}
                   >
                     {preset.label}
@@ -246,14 +250,14 @@ export default function Tracker() {
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 placeholder="Filter by location..."
-                className="control-input"
+                className="control-input pill-input"
                 style={{ width: 160 }}
               />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortValue)}
-                className="control-input"
-                style={{ width: 130 }}
+                className="control-input pill-input"
+                style={{ width: 140 }}
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -264,8 +268,7 @@ export default function Tracker() {
               {dismissedCount > 0 && (
                 <button
                   type="button"
-                  className="ghost"
-                  style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
+                  className="filter-pill-btn ghost"
                   onClick={() => setShowDismissed((v) => !v)}
                 >
                   {showDismissed ? "Hide dismissed" : `Show dismissed (${dismissedCount})`}
@@ -303,6 +306,7 @@ export default function Tracker() {
             accessToken={session.access_token}
             userId={session.user.id}
             contacts={contacts}
+            layout={viewMode === "cards" ? "cards" : "table"}
             onStatusChange={handleStatusChange}
             onNotesChange={handleNotesChange}
             onSaveTailoredResume={handleSaveTailoredResume}
