@@ -95,6 +95,10 @@ export default function AutoApply() {
     const merged = { ...settings, ...next };
     await supabase.from("auto_apply_settings").upsert({ user_id: session.user.id, ...merged });
     setSettings(merged);
+    // Clears any leftover "Run now" status message — otherwise a stale
+    // "Auto Apply is off" (or any other prior reason) keeps showing after
+    // the settings that caused it have already changed.
+    setRunResult(null);
   }
 
   async function handleRunNow() {
