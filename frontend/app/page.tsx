@@ -320,41 +320,53 @@ export default function Home() {
             populate this.
           </p>
         ) : (
-          <div className="top-matches-row" style={{ marginTop: "0.85rem" }}>
-            {topMatches.map((m, i) => {
-              const pct = Math.round(m.fit_score * 100);
-              return (
-                <div key={m.job_id} className={`match-card ${CARD_TINTS[i % CARD_TINTS.length]}`}>
-                  <div className="match-card-top">
-                    <span className="match-card-posted">
-                      {m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
-                    </span>
-                    <span
-                      className="match-ring"
-                      style={{ background: `conic-gradient(var(--text-primary) ${pct}%, color-mix(in srgb, var(--text-primary) 14%, transparent) 0)` }}
-                    >
-                      <span className="match-ring-value">{pct}%</span>
-                    </span>
-                  </div>
-                  <p className="match-card-title">{m.jobs?.title}</p>
-                  <div className="match-card-bottom">
-                    <div className="match-card-company">
-                      <span>{m.jobs?.company}</span>
+          <div className="top-matches-row-wrap" style={{ marginTop: "0.85rem" }}>
+            <div className="top-matches-row">
+              {topMatches.map((m, i) => {
+                const pct = Math.round(m.fit_score * 100);
+                return (
+                  <div key={m.job_id} className={`match-card ${CARD_TINTS[i % CARD_TINTS.length]}`}>
+                    <div className="match-card-top">
+                      <span className="match-card-posted">
+                        {m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
+                      </span>
+                      <span
+                        className="match-ring"
+                        style={{ background: `conic-gradient(var(--text-primary) ${pct}%, color-mix(in srgb, var(--text-primary) 14%, transparent) 0)` }}
+                      >
+                        <span className="match-ring-value">{pct}%</span>
+                        <span className="match-ring-label">Match</span>
+                      </span>
                     </div>
-                    <div className="match-card-actions">
-                      <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
-                        Pass
-                      </button>
-                      {m.jobs?.apply_url && (
-                        <a className="primary" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
-                          Apply
-                        </a>
-                      )}
+                    <p className="match-card-title">{m.jobs?.title}</p>
+                    {m.missing_skills.length > 0 && (
+                      <div className="match-card-skills">
+                        {m.missing_skills.map((skill) => (
+                          <span className="pill" key={skill}>
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="match-card-bottom">
+                      <div className="match-card-company">
+                        <span>{m.jobs?.company}</span>
+                      </div>
+                      <div className="match-card-actions">
+                        <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
+                          Pass
+                        </button>
+                        {m.jobs?.apply_url && (
+                          <a className="primary" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
+                            Apply
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

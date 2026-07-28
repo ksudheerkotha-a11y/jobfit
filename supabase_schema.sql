@@ -81,6 +81,11 @@ create table if not exists resume_versions (
   ats_score         numeric,
   keywords          jsonb not null default '[]',
   is_default        boolean not null default false,
+  -- Per-version document formatting for the Resume page's live preview
+  -- (template, font, size, alignment, fit-to-one-page, section order) —
+  -- "jobfit remembers your rules and applies them everywhere" only works
+  -- if this travels with the version, not a single global setting.
+  format_prefs      jsonb not null default '{}',
   created_at        timestamptz not null default now()
 );
 

@@ -127,6 +127,26 @@ export type Interview = {
   created_at: string;
 };
 
+export type FormatPrefs = {
+  template: "standard" | "jake";
+  font: string;
+  fontSize: number;
+  align: "left" | "justified";
+  fitToOnePage: boolean;
+  sectionOrder: string[];
+};
+
+export const DEFAULT_FORMAT_PREFS: FormatPrefs = {
+  template: "standard",
+  font: "Arial",
+  fontSize: 10.5,
+  align: "left",
+  fitToOnePage: true,
+  sectionOrder: ["summary", "experience", "education", "skills"],
+};
+
+export const RESUME_FONTS = ["Arial", "Helvetica", "Georgia", "Times New Roman", "Calibri"];
+
 export type ResumeVersion = {
   id: number;
   title: string;
@@ -136,6 +156,7 @@ export type ResumeVersion = {
   ats_score: number | null;
   keywords: string[];
   is_default: boolean;
+  format_prefs: Partial<FormatPrefs>;
   created_at: string;
 };
 

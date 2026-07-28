@@ -3,22 +3,49 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { ResumeVersion } from "@/lib/types";
+import { EducationEntry, ExperienceEntry, FormatPrefs, Profile, ResumeVersion, SkillEntry } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
 import { AssistantPanel } from "@/components/AssistantPanel";
 import { useAssistantOpen } from "@/lib/useAssistantOpen";
 import { ResumeCenter } from "@/components/ResumeCenter";
+import { ResumeEditor } from "@/components/ResumeEditor";
 import { Logomark, SparkleIcon } from "@/components/icons";
 
 // Per-user (auth session, resume versions) — never static.
 export const dynamic = "force-dynamic";
 
+const DEFAULT_PROFILE: Profile = {
+  full_name: "",
+  open_to_work: true,
+  location: "",
+  phone: "",
+  professional_summary: "",
+  work_authorized: false,
+  needs_sponsorship: false,
+  in_person_ok: false,
+  can_relocate: false,
+  start_immediately: false,
+  has_transport: false,
+  needs_accommodations: false,
+  prior_employee: false,
+  gov_clearance: false,
+  gov_ties: false,
+  updated_at: new Date().toISOString(),
+};
+
 export default function Resume() {
   const { session, loadingSession } = useSession();
   const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
+  const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
+  const [education, setEducation] = useState<EducationEntry[]>([]);
+  const [experience, setExperience] = useState<ExperienceEntry[]>([]);
+  const [skills, setSkills] = useState<SkillEntry[]>([]);
+  const [coverLetterId, setCoverLetterId] = useState<number | null>(null);
+  const [coverLetterText, setCoverLetterText] = useState("");
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -28,7 +55,12 @@ export default function Resume() {
     Promise.all([
       supabase.from("resumes").select("resume_text").eq("user_id", session.user.id).maybeSingle(),
       supabase.from("resume_versions").select("*").order("created_at", { ascending: false }),
-    ]).then(async ([legacyResumeRes, versionsRes]) => {
+      supabase.from("profile").select("*").maybeSingle(),
+      supabase.from("profile_education").select("*").order("sort_order"),
+      supabase.from("profile_experience").select("*").order("sort_order"),
+      supabase.from("profile_skills").select("*").order("category").order("sort_order"),
+      supabase.from("cover_letters").select("id, edited_content").is("job_id", null).maybeSingle(),
+    ]).then(async ([legacyResumeRes, versionsRes, profileRes, eduRes, expRes, skillsRes, letterRes]) => {
       let versions = (versionsRes.data as ResumeVersion[]) ?? [];
 
       // One-time backfill: users from before Phase 5 have their resume only
@@ -45,6 +77,13 @@ export default function Resume() {
       }
 
       setResumeVersions(versions);
+      setSelectedVersionId((versions.find((v) => v.is_default) ?? versions[0])?.id ?? null);
+      setProfile((profileRes.data as Profile) ?? DEFAULT_PROFILE);
+      setEducation((eduRes.data as EducationEntry[]) ?? []);
+      setExperience((expRes.data as ExperienceEntry[]) ?? []);
+      setSkills((skillsRes.data as SkillEntry[]) ?? []);
+      setCoverLetterId((letterRes.data?.id as number) ?? null);
+      setCoverLetterText(letterRes.data?.edited_content ?? "");
       setLoadingData(false);
     });
   }, [session]);
@@ -115,6 +154,26 @@ export default function Resume() {
     logActivity(session.user.id, "resume", String(id), "resume_analyzed", { title: target?.title, atsScore });
   }
 
+  async function handleSaveFormatPrefs(id: number, prefs: Partial<FormatPrefs>) {
+    await supabase.from("resume_versions").update({ format_prefs: prefs }).eq("id", id);
+    setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, format_prefs: prefs } : v)));
+  }
+
+  async function handleSaveCoverLetter(text: string) {
+    if (!session) return;
+    setCoverLetterText(text);
+    if (coverLetterId) {
+      await supabase.from("cover_letters").update({ edited_content: text, updated_at: new Date().toISOString() }).eq("id", coverLetterId);
+    } else {
+      const { data } = await supabase
+        .from("cover_letters")
+        .insert({ user_id: session.user.id, job_id: null, edited_content: text })
+        .select("id")
+        .single();
+      if (data) setCoverLetterId(data.id as number);
+    }
+  }
+
   if (loadingSession) {
     return (
       <main className="container center-page">
@@ -144,15 +203,31 @@ export default function Resume() {
       <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
     </div>
   ) : (
-    <ResumeCenter
-      accessToken={session.access_token}
-      versions={resumeVersions}
-      onAdd={handleAddResumeVersion}
-      onSetDefault={handleSetDefaultResumeVersion}
-      onUpdate={handleUpdateResumeVersion}
-      onDelete={handleDeleteResumeVersion}
-      onAnalyzed={handleAnalyzeResumeVersion}
-    />
+    <>
+      <ResumeEditor
+        versions={resumeVersions}
+        selectedId={selectedVersionId}
+        onSelect={setSelectedVersionId}
+        onAddVersion={() => handleAddResumeVersion("Untitled resume", "")}
+        onSetDefault={handleSetDefaultResumeVersion}
+        profile={profile}
+        education={education}
+        experience={experience}
+        skills={skills}
+        coverLetterText={coverLetterText}
+        onSavePrefs={handleSaveFormatPrefs}
+        onSaveCoverLetter={handleSaveCoverLetter}
+      />
+      <ResumeCenter
+        accessToken={session.access_token}
+        versions={resumeVersions}
+        onAdd={handleAddResumeVersion}
+        onSetDefault={handleSetDefaultResumeVersion}
+        onUpdate={handleUpdateResumeVersion}
+        onDelete={handleDeleteResumeVersion}
+        onAnalyzed={handleAnalyzeResumeVersion}
+      />
+    </>
   );
 
   return (

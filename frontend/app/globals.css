@@ -9,12 +9,15 @@
   --gridline: #e1e0d9;
   --border: rgba(11, 11, 11, 0.1);
   --border-strong: rgba(11, 11, 11, 0.16);
-  --accent: #2a78d6;
-  --accent-strong: #184f95;
-  --seq-100: #cde2fb;
-  --seq-250: #86b6ef;
-  --seq-450: #2a78d6;
-  --seq-600: #184f95;
+  --brand-blue: #2a78d6;
+  --accent-fill-bg: #1e3a2b;
+  --accent-fill-fg: #b9f0c9;
+  --accent: #1e3a2b;
+  --accent-strong: #14261c;
+  --seq-100: #d7e8dd;
+  --seq-250: #a8cdb4;
+  --seq-450: #1e3a2b;
+  --seq-600: #14261c;
   --good: #0ca30c;
   --good-text: #006300;
   --warning: #fab219;
@@ -42,12 +45,12 @@
     --gridline: #2c2c2a;
     --border: rgba(255, 255, 255, 0.1);
     --border-strong: rgba(255, 255, 255, 0.18);
-    --accent: #3987e5;
-    --accent-strong: #86b6ef;
-    --seq-100: #184f95;
-    --seq-250: #1c5cab;
-    --seq-450: #3987e5;
-    --seq-600: #86b6ef;
+    --accent: #7ddda0;
+    --accent-strong: #b9f0c9;
+    --seq-100: #1c3226;
+    --seq-250: #2c4d3a;
+    --seq-450: #7ddda0;
+    --seq-600: #b9f0c9;
     --good: #0ca30c;
     --good-text: #0ca30c;
     --warning: #fab219;
@@ -138,7 +141,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   background:
     radial-gradient(1200px 480px at 50% -120px, color-mix(in srgb, var(--accent) 7%, transparent), transparent),
     var(--page-plane);
@@ -211,7 +214,7 @@ body {
 }
 
 .logomark-bg {
-  fill: var(--accent);
+  fill: var(--brand-blue);
 }
 
 .header-actions {
@@ -250,6 +253,48 @@ body {
   background: var(--text-primary);
   color: var(--surface-card);
   box-shadow: var(--shadow-sm);
+}
+
+.app-nav-item {
+  position: relative;
+  display: inline-flex;
+}
+
+.app-nav-badge {
+  position: absolute;
+  top: -7px;
+  right: 2px;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-fill-bg);
+  color: var(--accent-fill-fg);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.support-bubble {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: var(--surface-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-card-hover);
+  z-index: 40;
+  transition: transform 0.15s ease;
+}
+
+.support-bubble:hover {
+  transform: translateY(-2px);
 }
 
 /* ---------- Notification bell ---------- */
@@ -610,13 +655,15 @@ input:focus {
 
 .matches-table {
   width: 100%;
-  min-width: 640px;
+  min-width: 940px;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
 .matches-table .role-cell {
-  min-width: 200px;
+  overflow: hidden;
+  word-wrap: break-word;
 }
 
 .matches-table th {
@@ -639,7 +686,8 @@ input:focus {
 .matches-table td {
   padding: 0.75rem;
   border-bottom: 1px solid var(--gridline);
-  vertical-align: middle;
+  vertical-align: top;
+  overflow: hidden;
 }
 
 .matches-table tbody tr:not(.row-dismissed):hover {
@@ -692,11 +740,12 @@ input:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-  max-width: 220px;
+  max-width: 100%;
 }
 
 .pill {
   display: inline-block;
+  max-width: 100%;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: var(--page-plane);
@@ -704,6 +753,8 @@ input:focus {
   color: var(--text-secondary);
   font-size: 0.75rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .apply-link {
@@ -803,8 +854,8 @@ select.control-input {
 }
 
 .badge-accent {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent-strong);
+  background: var(--accent-fill-bg);
+  color: var(--accent-fill-fg);
 }
 
 .row-dismissed {
@@ -812,7 +863,8 @@ select.control-input {
 }
 
 .status-select {
-  width: 130px;
+  width: 100%;
+  max-width: 130px;
   padding: 0.3rem 0.5rem;
   font-size: 0.8125rem;
 }
@@ -822,13 +874,22 @@ select.control-input {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.4rem;
+  max-width: 100%;
 }
 
 .row-actions-top {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.35rem;
+  max-width: 100%;
+}
+
+.row-action-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .icon-link {
@@ -1187,20 +1248,41 @@ select.control-input {
 
 /* ---------- Top job matches (dashboard card row) ---------- */
 
+.top-matches-row-wrap {
+  position: relative;
+  margin: 0 -0.15rem;
+}
+
 .top-matches-row {
   display: flex;
   gap: 0.85rem;
   overflow-x: auto;
-  padding-bottom: 0.35rem;
+  overflow-y: visible;
+  padding: 0.15rem 1.25rem 0.85rem 0.15rem;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0.15rem;
+}
+
+.top-matches-row-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0.85rem;
+  width: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--surface-card));
 }
 
 .match-card {
   flex: 0 0 250px;
+  scroll-snap-align: start;
   border-radius: 16px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   min-height: 190px;
+  overflow: hidden;
 }
 
 .match-card-tint-0 { background: var(--tint-rose); }
@@ -1223,12 +1305,14 @@ select.control-input {
 
 .match-ring {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   background: color-mix(in srgb, var(--text-primary) 12%, transparent);
   flex-shrink: 0;
 }
@@ -1243,9 +1327,34 @@ select.control-input {
 
 .match-ring-value {
   position: relative;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.match-ring-label {
+  position: relative;
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.match-card-skills {
+  display: flex;
+  gap: 0.3rem;
+  overflow: hidden;
+  white-space: nowrap;
+  margin: 0 0 0.5rem;
+  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+}
+
+.match-card-skills .pill {
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--surface-card) 55%, transparent);
 }
 
 .match-card-title {
@@ -1432,6 +1541,14 @@ select.control-input {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  background: var(--accent-fill-bg);
+  border-color: var(--accent-fill-bg);
+  color: var(--accent-fill-fg);
+}
+
+.assistant-send:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 @media (max-width: 900px) {
@@ -1473,5 +1590,197 @@ select.control-input {
 @media (max-width: 900px) {
   .three-col-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Resume editor ---------- */
+
+.resume-editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.resume-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.resume-version-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--gridline);
+}
+
+.resume-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.resume-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.resume-sections-popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: 200px;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+  padding: 0.5rem;
+  z-index: 20;
+}
+
+.resume-sections-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.8125rem;
+}
+
+.resume-doc-frame {
+  background: var(--page-plane);
+  border-radius: 14px;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.resume-doc {
+  background: #ffffff;
+  color: #16150f;
+  width: 100%;
+  max-width: 700px;
+  min-height: 900px;
+  padding: 2.5rem 3rem;
+  box-shadow: var(--shadow-card-hover);
+  border-radius: 4px;
+}
+
+.resume-doc-fit {
+  padding: 1.5rem 2.25rem;
+}
+
+.resume-doc-fit .resume-doc-section {
+  margin-bottom: 0.6rem;
+}
+
+.resume-doc-name {
+  font-size: 1.4em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.resume-doc-jake .resume-doc-name {
+  text-align: left;
+  font-size: 1.3em;
+}
+
+.resume-doc-contact {
+  text-align: center;
+  color: #55534a;
+  font-size: 0.85em;
+  margin-bottom: 1.25rem;
+}
+
+.resume-doc-jake .resume-doc-contact {
+  text-align: left;
+}
+
+.resume-doc-section {
+  margin-bottom: 1.1rem;
+}
+
+.resume-doc-section h3 {
+  font-size: 0.95em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #d8d6cd;
+  padding-bottom: 0.2rem;
+  margin: 0 0 0.5rem;
+}
+
+.resume-doc-jake .resume-doc-section h3 {
+  border-bottom: 1.5px solid #16150f;
+}
+
+.resume-doc-entry {
+  margin-bottom: 0.65rem;
+}
+
+.resume-doc-entry-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.95em;
+}
+
+.resume-doc-entry ul {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1em;
+  font-size: 0.9em;
+}
+
+.resume-doc-plaintext {
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+.resume-doc-textarea {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  padding: 0;
+  min-height: 700px;
+  resize: vertical;
+}
+
+.resume-doc-textarea:focus {
+  outline: none;
+}
+
+.resume-doc-hint {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--gridline);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .resume-doc,
+  .resume-doc * {
+    visibility: visible;
+  }
+
+  .resume-doc {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    min-height: 0;
+  }
+
+  .resume-doc-hint {
+    display: none;
   }
 }

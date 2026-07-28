@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { Logomark, SparkleIcon } from "@/components/icons";
+import { ChatBubbleIcon, Logomark, SparkleIcon } from "@/components/icons";
 import { NotificationBell } from "@/components/NotificationBell";
 
 const NAV_LINKS = [
@@ -42,11 +42,17 @@ export function AppHeader({ session, active }: { session: Session; active: Activ
       </div>
       <nav className="app-nav">
         {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className={active === link.href ? "app-nav-link active" : "app-nav-link"}>
-            {link.label}
-          </Link>
+          <span key={link.href} className="app-nav-item">
+            {link.href === "/auto-apply" && <span className="app-nav-badge">NEW</span>}
+            <Link href={link.href} className={active === link.href ? "app-nav-link active" : "app-nav-link"}>
+              {link.label}
+            </Link>
+          </span>
         ))}
       </nav>
+      <Link href="/" className="support-bubble" aria-label="Chat with the jobfit Assistant" title="Chat with the jobfit Assistant">
+        <ChatBubbleIcon size={20} />
+      </Link>
     </header>
   );
 }

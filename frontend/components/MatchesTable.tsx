@@ -188,6 +188,14 @@ export function MatchesTable({
   return (
     <div className="table-wrap">
       <table className="matches-table">
+        <colgroup>
+          <col style={{ width: "90px" }} />
+          <col style={{ width: "220px" }} />
+          <col style={{ width: "120px" }} />
+          <col style={{ width: "210px" }} />
+          <col style={{ width: "140px" }} />
+          <col style={{ width: "230px" }} />
+        </colgroup>
         <thead>
           <tr>
             <th>Fit</th>
@@ -263,33 +271,33 @@ export function MatchesTable({
                   <td>
                     <div className="row-actions">
                       <div className="row-actions-top">
-                        <button type="button" className="ghost icon-btn" onClick={() => handleDraft(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleDraft(i, m)}>
                           <MailIcon size={14} />
                           {isPanelOpen("cover-letter") ? "Hide letter" : "Cover letter"}
                         </button>
-                        <button type="button" className="ghost icon-btn" onClick={() => handleTailor(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleTailor(i, m)}>
                           <SparkleIcon size={14} />
                           {isPanelOpen("tailor-resume") ? "Hide tailor" : "Tailor resume"}
                         </button>
                       </div>
                       <div className="row-actions-top">
-                        <button type="button" className="ghost icon-btn" onClick={() => handleNotesOpen(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleNotesOpen(i, m)}>
                           <NoteIcon size={14} />
                           {isPanelOpen("notes") ? "Hide notes" : m.notes ? "Notes ●" : "Notes"}
                         </button>
                         {contact && (
-                          <button type="button" className="ghost icon-btn" onClick={() => handleReferral(i, m, contact)}>
+                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleReferral(i, m, contact)}>
                             <UsersIcon size={14} />
                             {isPanelOpen("referral") ? "Hide ask" : "Referral ask"}
                           </button>
                         )}
                         {needsFollowUp && (
-                          <button type="button" className="ghost icon-btn" onClick={() => handleFollowup(i, m)}>
+                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleFollowup(i, m)}>
                             <BellIcon size={14} />
                             {isPanelOpen("followup") ? "Hide follow-up" : "Draft follow-up"}
                           </button>
                         )}
-                        <button type="button" className="ghost icon-btn" onClick={() => togglePanel(i, "timeline")}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => togglePanel(i, "timeline")}>
                           <ActivityIcon size={14} />
                           {isPanelOpen("timeline") ? "Hide timeline" : "Timeline"}
                         </button>
