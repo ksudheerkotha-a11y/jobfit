@@ -8,6 +8,7 @@ import {
   ExperienceEntry,
   FormatPrefs,
   Profile,
+  ProjectEntry,
   RESUME_FONTS,
   ResumeVersion,
   SkillEntry,
@@ -16,6 +17,7 @@ import {
 const SECTION_LABELS: Record<string, string> = {
   summary: "Summary",
   experience: "Experience",
+  projects: "Projects",
   education: "Education",
   skills: "Skills",
 };
@@ -40,8 +42,10 @@ export function ResumeEditor({
   onAddVersion,
   onSetDefault,
   profile,
+  email,
   education,
   experience,
+  projects,
   skills,
   coverLetterText,
   onSavePrefs,
@@ -53,8 +57,10 @@ export function ResumeEditor({
   onAddVersion: () => Promise<void>;
   onSetDefault: (id: number) => Promise<void>;
   profile: Profile | null;
+  email: string;
   education: EducationEntry[];
   experience: ExperienceEntry[];
+  projects: ProjectEntry[];
   skills: SkillEntry[];
   coverLetterText: string;
   onSavePrefs: (id: number, prefs: Partial<FormatPrefs>) => Promise<void>;
@@ -71,7 +77,11 @@ export function ResumeEditor({
   const prefs = mergedPrefs(selected);
 
   const hasStructuredData =
-    !!profile?.professional_summary.trim() || education.length > 0 || experience.length > 0 || skills.length > 0;
+    !!profile?.professional_summary.trim() ||
+    education.length > 0 ||
+    experience.length > 0 ||
+    projects.length > 0 ||
+    skills.length > 0;
 
   const skillsByCategory = useMemo(() => {
     return skills.reduce<Record<string, SkillEntry[]>>((acc, s) => {
@@ -302,7 +312,7 @@ export function ResumeEditor({
           >
             <div className="resume-doc-name">{profile?.full_name || "Your name"}</div>
             <div className="resume-doc-contact">
-              {[profile?.location, profile?.phone].filter(Boolean).join(" · ")}
+              {[profile?.location, email, profile?.phone, profile?.linkedin_url].filter(Boolean).join(" · ")}
             </div>
             {prefs.sectionOrder.map((key) => {
               if (key === "summary" && profile?.professional_summary.trim()) {
@@ -326,6 +336,29 @@ export function ResumeEditor({
                         {e.bullets.length > 0 && (
                           <ul>
                             {e.bullets.map((b, i) => (
+                              <li key={i}>{b}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </section>
+                );
+              }
+              if (key === "projects" && projects.length > 0) {
+                return (
+                  <section key={key} className="resume-doc-section">
+                    <h3>Projects</h3>
+                    {projects.map((p) => (
+                      <div key={p.id} className="resume-doc-entry">
+                        <div className="resume-doc-entry-top">
+                          <strong>{p.title}</strong>
+                          {p.link && <span>{p.link}</span>}
+                        </div>
+                        {p.description && <p style={{ margin: "0.15rem 0" }}>{p.description}</p>}
+                        {p.bullets.length > 0 && (
+                          <ul>
+                            {p.bullets.map((b, i) => (
                               <li key={i}>{b}</li>
                             ))}
                           </ul>

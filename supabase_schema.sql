@@ -222,6 +222,7 @@ create table if not exists profile (
   open_to_work          boolean not null default true,
   location              text not null default '',
   phone                 text not null default '',
+  linkedin_url          text not null default '',
   professional_summary  text not null default '',
   work_authorized       boolean not null default false,
   needs_sponsorship     boolean not null default false,
@@ -278,6 +279,23 @@ create table if not exists profile_skills (
 
 create index if not exists profile_skills_user_idx on profile_skills (user_id, category, sort_order);
 
+-- Side/independent work distinct from paid employment — kept separate
+-- from profile_experience rather than folded in, since resumes
+-- conventionally give projects their own section with different fields
+-- (a link, no company/location).
+create table if not exists profile_projects (
+  id           bigserial primary key,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  title        text not null default '',
+  description  text not null default '',
+  link         text not null default '',
+  bullets      text[] not null default '{}',
+  sort_order   integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists profile_projects_user_idx on profile_projects (user_id, sort_order);
+
 -- Row Level Security. The service_role key (used by ingest.py / match.py)
 -- bypasses RLS entirely, so batch writes are unaffected by the policies below.
 
@@ -298,6 +316,7 @@ alter table profile enable row level security;
 alter table profile_education enable row level security;
 alter table profile_experience enable row level security;
 alter table profile_skills enable row level security;
+alter table profile_projects enable row level security;
 
 -- Job listings are not sensitive; anyone (including the frontend's anon key)
 -- can read them. Only the service_role key can write.
@@ -415,5 +434,10 @@ create policy "users manage their own experience"
 
 create policy "users manage their own skills"
   on profile_skills for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "users manage their own projects"
+  on profile_projects for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);

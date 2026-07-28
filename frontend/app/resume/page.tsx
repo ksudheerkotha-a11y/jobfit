@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { EducationEntry, ExperienceEntry, FormatPrefs, Profile, ResumeVersion, SkillEntry } from "@/lib/types";
+import { EducationEntry, ExperienceEntry, FormatPrefs, Profile, ProjectEntry, ResumeVersion, SkillEntry } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
@@ -21,6 +21,7 @@ const DEFAULT_PROFILE: Profile = {
   open_to_work: true,
   location: "",
   phone: "",
+  linkedin_url: "",
   professional_summary: "",
   work_authorized: false,
   needs_sponsorship: false,
@@ -43,6 +44,7 @@ export default function Resume() {
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [education, setEducation] = useState<EducationEntry[]>([]);
   const [experience, setExperience] = useState<ExperienceEntry[]>([]);
+  const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [coverLetterId, setCoverLetterId] = useState<number | null>(null);
   const [coverLetterText, setCoverLetterText] = useState("");
@@ -58,9 +60,10 @@ export default function Resume() {
       supabase.from("profile").select("*").maybeSingle(),
       supabase.from("profile_education").select("*").order("sort_order"),
       supabase.from("profile_experience").select("*").order("sort_order"),
+      supabase.from("profile_projects").select("*").order("sort_order"),
       supabase.from("profile_skills").select("*").order("category").order("sort_order"),
       supabase.from("cover_letters").select("id, edited_content").is("job_id", null).maybeSingle(),
-    ]).then(async ([legacyResumeRes, versionsRes, profileRes, eduRes, expRes, skillsRes, letterRes]) => {
+    ]).then(async ([legacyResumeRes, versionsRes, profileRes, eduRes, expRes, projectsRes, skillsRes, letterRes]) => {
       let versions = (versionsRes.data as ResumeVersion[]) ?? [];
 
       // One-time backfill: users from before Phase 5 have their resume only
@@ -81,6 +84,7 @@ export default function Resume() {
       setProfile((profileRes.data as Profile) ?? DEFAULT_PROFILE);
       setEducation((eduRes.data as EducationEntry[]) ?? []);
       setExperience((expRes.data as ExperienceEntry[]) ?? []);
+      setProjects((projectsRes.data as ProjectEntry[]) ?? []);
       setSkills((skillsRes.data as SkillEntry[]) ?? []);
       setCoverLetterId((letterRes.data?.id as number) ?? null);
       setCoverLetterText(letterRes.data?.edited_content ?? "");
@@ -211,8 +215,10 @@ export default function Resume() {
         onAddVersion={() => handleAddResumeVersion("Untitled resume", "")}
         onSetDefault={handleSetDefaultResumeVersion}
         profile={profile}
+        email={session.user.email ?? ""}
         education={education}
         experience={experience}
+        projects={projects}
         skills={skills}
         coverLetterText={coverLetterText}
         onSavePrefs={handleSaveFormatPrefs}

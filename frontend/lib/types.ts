@@ -142,7 +142,7 @@ export const DEFAULT_FORMAT_PREFS: FormatPrefs = {
   fontSize: 10.5,
   align: "left",
   fitToOnePage: true,
-  sectionOrder: ["summary", "experience", "education", "skills"],
+  sectionOrder: ["summary", "experience", "projects", "education", "skills"],
 };
 
 export const RESUME_FONTS = ["Arial", "Helvetica", "Georgia", "Times New Roman", "Calibri"];
@@ -207,6 +207,7 @@ export type Profile = {
   open_to_work: boolean;
   location: string;
   phone: string;
+  linkedin_url: string;
   professional_summary: string;
   work_authorized: boolean;
   needs_sponsorship: boolean;
@@ -246,5 +247,14 @@ export type SkillEntry = {
   id: number;
   category: string;
   skill: string;
+  sort_order: number;
+};
+
+export type ProjectEntry = {
+  id: number;
+  title: string;
+  description: string;
+  link: string;
+  bullets: string[];
   sort_order: number;
 };

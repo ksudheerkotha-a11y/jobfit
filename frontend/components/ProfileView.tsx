@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { EducationEntry, ExperienceEntry, Profile, ResumeVersion, SkillEntry } from "@/lib/types";
+import { EducationEntry, ExperienceEntry, Profile, ProjectEntry, ResumeVersion, SkillEntry } from "@/lib/types";
 import { UsersIcon, MailIcon, SparkleIcon } from "@/components/icons";
 import Link from "next/link";
 
 type EducationInput = Omit<EducationEntry, "id" | "sort_order">;
 type ExperienceInput = Omit<ExperienceEntry, "id" | "sort_order">;
+type ProjectInput = Omit<ProjectEntry, "id" | "sort_order">;
 
 const DEFAULT_CATEGORIES = ["Soft Skills", "Frameworks & Libraries", "Databases", "Tools & Software", "Languages"];
 
@@ -42,6 +43,7 @@ export function ProfileView({
   email,
   education,
   experience,
+  projects,
   skills,
   resumeVersions,
   coverLetterText,
@@ -52,6 +54,8 @@ export function ProfileView({
   onDeleteEducation,
   onAddExperience,
   onDeleteExperience,
+  onAddProject,
+  onDeleteProject,
   onAddSkill,
   onDeleteSkill,
   onSaveCoverLetter,
@@ -60,6 +64,7 @@ export function ProfileView({
   email: string;
   education: EducationEntry[];
   experience: ExperienceEntry[];
+  projects: ProjectEntry[];
   skills: SkillEntry[];
   resumeVersions: ResumeVersion[];
   coverLetterText: string;
@@ -70,6 +75,8 @@ export function ProfileView({
   onDeleteEducation: (id: number) => Promise<void>;
   onAddExperience: (input: ExperienceInput) => Promise<void>;
   onDeleteExperience: (id: number) => Promise<void>;
+  onAddProject: (input: ProjectInput) => Promise<void>;
+  onDeleteProject: (id: number) => Promise<void>;
   onAddSkill: (category: string, skill: string) => Promise<void>;
   onDeleteSkill: (id: number) => Promise<void>;
   onSaveCoverLetter: (text: string) => Promise<void>;
@@ -112,8 +119,9 @@ export function ProfileView({
 
       <div className="two-col-grid">
         <div>
-          <EducationSection entries={education} onAdd={onAddEducation} onDelete={onDeleteEducation} />
           <ExperienceSection entries={experience} onAdd={onAddExperience} onDelete={onDeleteExperience} />
+          <ProjectsSection entries={projects} onAdd={onAddProject} onDelete={onDeleteProject} />
+          <EducationSection entries={education} onAdd={onAddEducation} onDelete={onDeleteEducation} />
         </div>
         <div>
           <ApplicationDefaultsCard profile={profile} onSave={onSaveProfile} />
@@ -165,6 +173,12 @@ function IdentityCard({
           value={draft.phone}
           onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
           placeholder="Phone"
+          style={{ marginBottom: "0.5rem" }}
+        />
+        <input
+          value={draft.linkedin_url}
+          onChange={(e) => setDraft((d) => ({ ...d, linkedin_url: e.target.value }))}
+          placeholder="LinkedIn URL"
           style={{ marginBottom: "0.5rem" }}
         />
         <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.75rem", fontSize: "0.875rem" }}>
@@ -220,6 +234,7 @@ function IdentityCard({
         {email}
         {profile.phone && ` · ${profile.phone}`}
         {profile.location && ` · ${profile.location}`}
+        {profile.linkedin_url && ` · ${profile.linkedin_url}`}
       </p>
       <button type="button" className="ghost icon-link" onClick={() => setEditing(true)}>
         Edit →
@@ -473,6 +488,99 @@ function ExperienceSection({
       ) : (
         <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>
           + Add experience
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ProjectsSection({
+  entries,
+  onAdd,
+  onDelete,
+}: {
+  entries: ProjectEntry[];
+  onAdd: (input: ProjectInput) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}) {
+  const [addOpen, setAddOpen] = useState(false);
+  const empty: ProjectInput = { title: "", description: "", link: "", bullets: [] };
+  const [draft, setDraft] = useState<ProjectInput>(empty);
+  const [bulletsText, setBulletsText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="card">
+      <div className="card-header-static">
+        <h2 style={{ margin: 0 }}>Projects</h2>
+        <span className="hint" style={{ margin: 0 }}>{entries.length} {entries.length === 1 ? "project" : "projects"}</span>
+      </div>
+
+      {entries.length === 0 && !addOpen && <p className="empty-state">No projects added yet.</p>}
+
+      <div className="resume-version-list" style={{ marginTop: entries.length > 0 ? "0.85rem" : 0 }}>
+        {entries.map((p) => (
+          <div className="resume-version-card" key={p.id}>
+            <p style={{ margin: 0, fontWeight: 600 }}>{p.title}</p>
+            {(p.description || p.link) && (
+              <p className="hint" style={{ margin: "0.15rem 0 0" }}>
+                {p.description}
+                {p.link && ` · ${p.link}`}
+              </p>
+            )}
+            {p.bullets.length > 0 && (
+              <ul className="hint" style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }}>
+                {p.bullets.map((b, i) => (
+                  <li key={i}>{b}</li>
+                ))}
+              </ul>
+            )}
+            <div className="resume-version-actions">
+              <button type="button" className="ghost" onClick={() => onDelete(p.id)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {addOpen ? (
+        <div className="resume-version-card" style={{ marginTop: "0.85rem" }}>
+          <input value={draft.title} onChange={(ev) => setDraft((d) => ({ ...d, title: ev.target.value }))} placeholder="Project name" style={{ marginBottom: "0.4rem" }} />
+          <input value={draft.description} onChange={(ev) => setDraft((d) => ({ ...d, description: ev.target.value }))} placeholder="One-line description" style={{ marginBottom: "0.4rem" }} />
+          <input value={draft.link} onChange={(ev) => setDraft((d) => ({ ...d, link: ev.target.value }))} placeholder="Link (optional)" style={{ marginBottom: "0.4rem" }} />
+          <textarea
+            rows={4}
+            value={bulletsText}
+            onChange={(ev) => setBulletsText(ev.target.value)}
+            placeholder="One bullet per line..."
+            style={{ marginBottom: "0.6rem" }}
+          />
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className="primary"
+              disabled={saving || !draft.title.trim()}
+              onClick={async () => {
+                setSaving(true);
+                const bullets = bulletsText.split("\n").map((b) => b.trim()).filter(Boolean);
+                await onAdd({ ...draft, bullets });
+                setSaving(false);
+                setDraft(empty);
+                setBulletsText("");
+                setAddOpen(false);
+              }}
+            >
+              Add
+            </button>
+            <button type="button" className="ghost" onClick={() => setAddOpen(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>
+          + Add project
         </button>
       )}
     </div>

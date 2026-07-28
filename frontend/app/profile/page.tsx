@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
-import { EducationEntry, ExperienceEntry, Profile, ResumeVersion, SkillEntry } from "@/lib/types";
+import { EducationEntry, ExperienceEntry, Profile, ProjectEntry, ResumeVersion, SkillEntry } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
@@ -18,6 +18,7 @@ const DEFAULT_PROFILE: Profile = {
   open_to_work: true,
   location: "",
   phone: "",
+  linkedin_url: "",
   professional_summary: "",
   work_authorized: false,
   needs_sponsorship: false,
@@ -34,12 +35,14 @@ const DEFAULT_PROFILE: Profile = {
 
 type EducationInput = Omit<EducationEntry, "id" | "sort_order">;
 type ExperienceInput = Omit<ExperienceEntry, "id" | "sort_order">;
+type ProjectInput = Omit<ProjectEntry, "id" | "sort_order">;
 
 export default function ProfilePage() {
   const { session, loadingSession } = useSession();
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [education, setEducation] = useState<EducationEntry[]>([]);
   const [experience, setExperience] = useState<ExperienceEntry[]>([]);
+  const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [coverLetterId, setCoverLetterId] = useState<number | null>(null);
@@ -55,13 +58,15 @@ export default function ProfilePage() {
       supabase.from("profile").select("*").maybeSingle(),
       supabase.from("profile_education").select("*").order("sort_order"),
       supabase.from("profile_experience").select("*").order("sort_order"),
+      supabase.from("profile_projects").select("*").order("sort_order"),
       supabase.from("profile_skills").select("*").order("category").order("sort_order"),
       supabase.from("resume_versions").select("*"),
       supabase.from("cover_letters").select("id, edited_content").is("job_id", null).maybeSingle(),
-    ]).then(([profileRes, eduRes, expRes, skillsRes, versionsRes, letterRes]) => {
+    ]).then(([profileRes, eduRes, expRes, projectsRes, skillsRes, versionsRes, letterRes]) => {
       setProfile((profileRes.data as Profile) ?? DEFAULT_PROFILE);
       setEducation((eduRes.data as EducationEntry[]) ?? []);
       setExperience((expRes.data as ExperienceEntry[]) ?? []);
+      setProjects((projectsRes.data as ProjectEntry[]) ?? []);
       setSkills((skillsRes.data as SkillEntry[]) ?? []);
       setResumeVersions((versionsRes.data as ResumeVersion[]) ?? []);
       setCoverLetterId((letterRes.data?.id as number) ?? null);
@@ -108,6 +113,22 @@ export default function ProfilePage() {
   async function handleDeleteExperience(id: number) {
     await supabase.from("profile_experience").delete().eq("id", id);
     setExperience((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  async function handleAddProject(input: ProjectInput) {
+    if (!session) return;
+    const { data, error } = await supabase
+      .from("profile_projects")
+      .insert({ user_id: session.user.id, ...input, sort_order: projects.length })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    setProjects((prev) => [...prev, data as ProjectEntry]);
+  }
+
+  async function handleDeleteProject(id: number) {
+    await supabase.from("profile_projects").delete().eq("id", id);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
   async function handleAddSkill(category: string, skill: string) {
@@ -157,8 +178,18 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
 
+      // Only fills fields that are currently empty — never overwrites
+      // something the user already typed themselves.
+      const identityPatch: Partial<Profile> = {};
+      if (!profile.full_name.trim() && data.full_name) identityPatch.full_name = data.full_name;
+      if (!profile.location.trim() && data.location) identityPatch.location = data.location;
+      if (!profile.phone.trim() && data.phone) identityPatch.phone = data.phone;
+      if (!profile.linkedin_url.trim() && data.linkedin_url) identityPatch.linkedin_url = data.linkedin_url;
       if (!profile.professional_summary.trim() && data.professional_summary) {
-        await handleSaveProfile({ professional_summary: data.professional_summary });
+        identityPatch.professional_summary = data.professional_summary;
+      }
+      if (Object.keys(identityPatch).length > 0) {
+        await handleSaveProfile(identityPatch);
       }
 
       for (const edu of data.education ?? []) {
@@ -179,6 +210,15 @@ export default function ProfilePage() {
           start_date: exp.start_date ?? "",
           end_date: exp.end_date ?? "",
           bullets: Array.isArray(exp.bullets) ? exp.bullets : [],
+        });
+      }
+
+      for (const proj of data.projects ?? []) {
+        await handleAddProject({
+          title: proj.title ?? "",
+          description: proj.description ?? "",
+          link: proj.link ?? "",
+          bullets: Array.isArray(proj.bullets) ? proj.bullets : [],
         });
       }
 
@@ -235,6 +275,7 @@ export default function ProfilePage() {
           email={session.user.email ?? ""}
           education={education}
           experience={experience}
+          projects={projects}
           skills={skills}
           resumeVersions={resumeVersions}
           coverLetterText={coverLetterText}
@@ -245,6 +286,8 @@ export default function ProfilePage() {
           onDeleteEducation={handleDeleteEducation}
           onAddExperience={handleAddExperience}
           onDeleteExperience={handleDeleteExperience}
+          onAddProject={handleAddProject}
+          onDeleteProject={handleDeleteProject}
           onAddSkill={handleAddSkill}
           onDeleteSkill={handleDeleteSkill}
           onSaveCoverLetter={handleSaveCoverLetter}
