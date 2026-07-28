@@ -41,6 +41,7 @@ export function ResumeCenter({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<Record<number, AnalyzeState>>({});
   const [suggestionsById, setSuggestionsById] = useState<Record<number, string[]>>({});
 
@@ -89,9 +90,15 @@ export function ResumeCenter({
 
   async function saveEdit(id: number) {
     setBusyId(id);
-    await onUpdate(id, editText);
-    setBusyId(null);
-    setEditingId(null);
+    setActionError(null);
+    try {
+      await onUpdate(id, editText);
+      setEditingId(null);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't save that change");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function handleAnalyze(v: ResumeVersion) {
@@ -117,14 +124,26 @@ export function ResumeCenter({
 
   async function handleSetDefault(id: number) {
     setBusyId(id);
-    await onSetDefault(id);
-    setBusyId(null);
+    setActionError(null);
+    try {
+      await onSetDefault(id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't set that as your default resume");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function handleDelete(v: ResumeVersion) {
     setBusyId(v.id);
-    await onDelete(v.id);
-    setBusyId(null);
+    setActionError(null);
+    try {
+      await onDelete(v.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't delete that resume version");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   function sourceTitle(v: ResumeVersion): string | undefined {
@@ -148,6 +167,7 @@ export function ResumeCenter({
 
       {open && (
         <div style={{ marginTop: "1rem" }}>
+          {actionError && <p className="error" style={{ marginTop: 0 }}>{actionError}</p>}
           {versions.length > 0 && (
             <div className="resume-version-list">
               {versions.map((v) => {

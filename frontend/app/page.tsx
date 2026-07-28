@@ -42,10 +42,12 @@ export default function Home() {
   // Starts true (not false) so the dashboard renders its loading skeleton
   // rather than an empty state before the fetch below resolves.
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
     setLoadingData(true);
+    setLoadError(null);
 
     Promise.all([
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
@@ -56,6 +58,11 @@ export default function Home() {
         .order("scheduled_at", { ascending: true })
         .limit(3),
     ]).then(([matchesRes, interviewsRes]) => {
+      // A failed query here would otherwise render as "no matches yet" —
+      // indistinguishable from a genuinely empty shortlist, which sends
+      // the user chasing a non-problem.
+      const err = matchesRes.error || interviewsRes.error;
+      if (err) setLoadError("Couldn't load your dashboard data — try refreshing.");
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setUpcomingInterviews((interviewsRes.data as Interview[]) ?? []);
       setLoadingData(false);
@@ -70,11 +77,21 @@ export default function Home() {
 
     setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, status, applied_at: appliedAt } : m)));
 
-    await supabase
+    const { error } = await supabase
       .from("matches")
       .update({ status, applied_at: appliedAt })
       .eq("job_id", jobId)
       .eq("user_id", session.user.id);
+
+    if (error) {
+      // Roll back — the write didn't actually happen, so the UI shouldn't
+      // keep showing a status change that never made it to the database.
+      console.warn("Failed to update match status:", error.message);
+      setMatches((prev) =>
+        prev.map((m) => (m.job_id === jobId && existing ? { ...m, status: existing.status, applied_at: existing.applied_at } : m))
+      );
+      return;
+    }
 
     if (existing && existing.status !== status) {
       logActivity(session.user.id, "application", jobId, "status_changed", {
@@ -177,6 +194,7 @@ export default function Home() {
 
   const content = (
     <>
+      {loadError && <p className="error">{loadError}</p>}
       {loadingData ? (
         <div className="stat-grid">
           {Array.from({ length: 4 }).map((_, i) => (

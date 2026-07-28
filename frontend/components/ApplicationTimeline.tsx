@@ -10,8 +10,10 @@ import { ActivityRow, describeActivity, relativeTime } from "@/lib/activityDescr
  * to activity_log); anything before that deploy has no record. */
 export function ApplicationTimeline({ userId, jobId }: { userId: string; jobId: string }) {
   const [rows, setRows] = useState<ActivityRow[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadError(null);
     supabase
       .from("activity_log")
       .select("id, entity_type, entity_id, action, metadata, created_at")
@@ -19,11 +21,22 @@ export function ApplicationTimeline({ userId, jobId }: { userId: string; jobId: 
       .eq("entity_type", "application")
       .eq("entity_id", jobId)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setRows((data as ActivityRow[]) ?? []));
+      .then(({ data, error }) => {
+        if (error) {
+          setLoadError(error.message);
+          setRows([]);
+          return;
+        }
+        setRows((data as ActivityRow[]) ?? []);
+      });
   }, [userId, jobId]);
 
   if (rows === null) {
     return <p className="hint" style={{ margin: 0 }}>Loading timeline...</p>;
+  }
+
+  if (loadError) {
+    return <p className="error" style={{ margin: 0 }}>Couldn&rsquo;t load history: {loadError}</p>;
   }
 
   if (rows.length === 0) {

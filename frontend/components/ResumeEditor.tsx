@@ -71,6 +71,7 @@ export function ResumeEditor({
   const [adding, setAdding] = useState(false);
   const [letterDraft, setLetterDraft] = useState(coverLetterText);
   const [savingLetter, setSavingLetter] = useState(false);
+  const [letterError, setLetterError] = useState<string | null>(null);
   const letterDirty = letterDraft !== coverLetterText;
 
   const selected = versions.find((v) => v.id === selectedId) ?? versions.find((v) => v.is_default) ?? versions[0];
@@ -297,13 +298,20 @@ export function ResumeEditor({
                 disabled={savingLetter}
                 onClick={async () => {
                   setSavingLetter(true);
-                  await onSaveCoverLetter(letterDraft);
-                  setSavingLetter(false);
+                  setLetterError(null);
+                  try {
+                    await onSaveCoverLetter(letterDraft);
+                  } catch (err) {
+                    setLetterError(err instanceof Error ? err.message : "Couldn't save your cover letter");
+                  } finally {
+                    setSavingLetter(false);
+                  }
                 }}
               >
                 {savingLetter ? "Saving..." : "Save"}
               </button>
             )}
+            {letterError && <p className="error" style={{ marginTop: "0.5rem" }}>{letterError}</p>}
           </div>
         ) : hasStructuredData ? (
           <div

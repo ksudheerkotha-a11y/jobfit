@@ -56,15 +56,20 @@ export function JobSearch({
   async function toggleSave(job: JobRow) {
     const alreadySaved = savedJobIds.has(job.id);
     setSavingId(job.id);
+    setError(null);
     try {
       if (alreadySaved) {
-        await supabase.from("saved_jobs").delete().eq("user_id", userId).eq("job_id", job.id);
+        const { error } = await supabase.from("saved_jobs").delete().eq("user_id", userId).eq("job_id", job.id);
+        if (error) throw new Error(error.message);
         logActivity(userId, "job", job.id, "job_unsaved", { title: job.title, company: job.company });
       } else {
-        await supabase.from("saved_jobs").insert({ user_id: userId, job_id: job.id });
+        const { error } = await supabase.from("saved_jobs").insert({ user_id: userId, job_id: job.id });
+        if (error) throw new Error(error.message);
         logActivity(userId, "job", job.id, "job_saved", { title: job.title, company: job.company });
       }
       onSaveToggle(job.id, job, !alreadySaved);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save that job");
     } finally {
       setSavingId(null);
     }
@@ -94,6 +99,7 @@ export function JobSearch({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Role or company..."
+                aria-label="Role or company"
                 className="control-input search-input"
                 style={{ width: 220 }}
               />
@@ -102,6 +108,7 @@ export function JobSearch({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Location..."
+              aria-label="Location"
               className="control-input"
               style={{ width: 160 }}
             />

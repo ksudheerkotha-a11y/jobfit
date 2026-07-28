@@ -39,16 +39,20 @@ export default function Tracker() {
   const [showDismissed, setShowDismissed] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "board">("table");
   const [loadingData, setLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
     setLoadingData(true);
+    setLoadError(null);
 
     Promise.all([
       supabase.from("matches").select(MATCHES_SELECT).order("fit_score", { ascending: false }),
       supabase.from("contacts").select("id, name, company, context").order("name"),
       supabase.from("resume_versions").select("*"),
     ]).then(([matchesRes, contactsRes, versionsRes]) => {
+      const err = matchesRes.error || contactsRes.error || versionsRes.error;
+      if (err) setLoadError("Couldn't load your shortlist — try refreshing.");
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setContacts((contactsRes.data as Contact[]) ?? []);
       setResumeVersions((versionsRes.data as ResumeVersion[]) ?? []);
@@ -67,11 +71,19 @@ export default function Tracker() {
 
     setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, status, applied_at: appliedAt } : m)));
 
-    await supabase
+    const { error } = await supabase
       .from("matches")
       .update({ status, applied_at: appliedAt })
       .eq("job_id", jobId)
       .eq("user_id", session.user.id);
+
+    if (error) {
+      console.warn("Failed to update match status:", error.message);
+      setMatches((prev) =>
+        prev.map((m) => (m.job_id === jobId && existing ? { ...m, status: existing.status, applied_at: existing.applied_at } : m))
+      );
+      return;
+    }
 
     if (existing && existing.status !== status) {
       logActivity(session.user.id, "application", jobId, "status_changed", {
@@ -85,13 +97,20 @@ export default function Tracker() {
 
   async function handleNotesChange(jobId: string, notes: string) {
     if (!session) return;
+    const existing = matches.find((m) => m.job_id === jobId);
     setMatches((prev) => prev.map((m) => (m.job_id === jobId ? { ...m, notes } : m)));
-    await supabase.from("matches").update({ notes }).eq("job_id", jobId).eq("user_id", session.user.id);
 
-    const job = matches.find((m) => m.job_id === jobId);
+    const { error } = await supabase.from("matches").update({ notes }).eq("job_id", jobId).eq("user_id", session.user.id);
+
+    if (error) {
+      console.warn("Failed to save notes:", error.message);
+      setMatches((prev) => prev.map((m) => (m.job_id === jobId && existing ? { ...m, notes: existing.notes } : m)));
+      return;
+    }
+
     logActivity(session.user.id, "application", jobId, "note_added", {
-      company: job?.jobs?.company,
-      title: job?.jobs?.title,
+      company: existing?.jobs?.company,
+      title: existing?.jobs?.title,
     });
   }
 
@@ -175,6 +194,8 @@ export default function Tracker() {
   return (
     <main className="container">
       <AppHeader session={session} active="/tracker" />
+
+      {loadError && <p className="error">{loadError}</p>}
 
       <div className="card">
         <div className="shortlist-toolbar">

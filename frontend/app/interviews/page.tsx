@@ -57,7 +57,8 @@ export default function Interviews() {
 
   async function handleUpdate(id: number, input: InterviewInput) {
     if (!session) return;
-    await supabase.from("interviews").update(input).eq("id", id);
+    const { error } = await supabase.from("interviews").update(input).eq("id", id);
+    if (error) throw new Error(error.message);
     setInterviews((prev) => prev.map((i) => (i.id === id ? { ...i, ...input } : i)));
     logActivity(session.user.id, "interview", String(id), "interview_updated", { company: input.company });
   }
@@ -65,7 +66,8 @@ export default function Interviews() {
   async function handleDelete(id: number) {
     if (!session) return;
     const target = interviews.find((i) => i.id === id);
-    await supabase.from("interviews").delete().eq("id", id);
+    const { error } = await supabase.from("interviews").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setInterviews((prev) => prev.filter((i) => i.id !== id));
     logActivity(session.user.id, "interview", String(id), "interview_deleted", { company: target?.company });
   }

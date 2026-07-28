@@ -97,9 +97,13 @@ export default function Resume() {
   // requires touching the ingestion pipeline (see README / Phase 1 decision).
   async function syncLegacyResume(text: string) {
     if (!session) return;
-    await supabase
+    const { error } = await supabase
       .from("resumes")
       .upsert({ user_id: session.user.id, resume_text: text, updated_at: new Date().toISOString() });
+    // Worth a loud warning even though there's no natural place to show it
+    // in the UI: a silent failure here means AI matching/tailoring keeps
+    // scoring against a stale resume with no visible symptom.
+    if (error) console.warn("Failed to sync default resume for matching:", error.message);
   }
 
   async function handleAddResumeVersion(title: string, text: string) {
@@ -123,8 +127,13 @@ export default function Resume() {
     const target = resumeVersions.find((v) => v.id === id);
     if (!target || target.is_default) return;
 
-    await supabase.from("resume_versions").update({ is_default: false }).eq("user_id", session.user.id).eq("is_default", true);
-    await supabase.from("resume_versions").update({ is_default: true }).eq("id", id);
+    const [unsetRes, setRes] = await Promise.all([
+      supabase.from("resume_versions").update({ is_default: false }).eq("user_id", session.user.id).eq("is_default", true),
+      supabase.from("resume_versions").update({ is_default: true }).eq("id", id),
+    ]);
+    if (unsetRes.error || setRes.error) {
+      throw new Error(unsetRes.error?.message || setRes.error?.message || "Couldn't set that as your default resume");
+    }
 
     setResumeVersions((prev) => prev.map((v) => ({ ...v, is_default: v.id === id })));
     await syncLegacyResume(target.resume_text);
@@ -134,7 +143,8 @@ export default function Resume() {
   async function handleUpdateResumeVersion(id: number, text: string) {
     if (!session) return;
     const target = resumeVersions.find((v) => v.id === id);
-    await supabase.from("resume_versions").update({ resume_text: text }).eq("id", id);
+    const { error } = await supabase.from("resume_versions").update({ resume_text: text }).eq("id", id);
+    if (error) throw new Error(error.message);
     setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, resume_text: text } : v)));
     if (target?.is_default) await syncLegacyResume(text);
     logActivity(session.user.id, "resume", String(id), "resume_updated", {});
@@ -145,37 +155,48 @@ export default function Resume() {
     const target = resumeVersions.find((v) => v.id === id);
     if (!target || target.is_default || resumeVersions.length <= 1) return;
 
-    await supabase.from("resume_versions").delete().eq("id", id);
+    const { error } = await supabase.from("resume_versions").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setResumeVersions((prev) => prev.filter((v) => v.id !== id));
     logActivity(session.user.id, "resume", String(id), "resume_version_deleted", { title: target.title });
   }
 
   async function handleAnalyzeResumeVersion(id: number, atsScore: number, keywords: string[]) {
     if (!session) return;
-    await supabase.from("resume_versions").update({ ats_score: atsScore, keywords }).eq("id", id);
+    const { error } = await supabase.from("resume_versions").update({ ats_score: atsScore, keywords }).eq("id", id);
+    if (error) throw new Error(error.message);
     setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ats_score: atsScore, keywords } : v)));
     const target = resumeVersions.find((v) => v.id === id);
     logActivity(session.user.id, "resume", String(id), "resume_analyzed", { title: target?.title, atsScore });
   }
 
   async function handleSaveFormatPrefs(id: number, prefs: Partial<FormatPrefs>) {
-    await supabase.from("resume_versions").update({ format_prefs: prefs }).eq("id", id);
+    const { error } = await supabase.from("resume_versions").update({ format_prefs: prefs }).eq("id", id);
+    if (error) {
+      console.warn("Failed to save formatting preferences:", error.message);
+      return;
+    }
     setResumeVersions((prev) => prev.map((v) => (v.id === id ? { ...v, format_prefs: prefs } : v)));
   }
 
   async function handleSaveCoverLetter(text: string) {
     if (!session) return;
-    setCoverLetterText(text);
     if (coverLetterId) {
-      await supabase.from("cover_letters").update({ edited_content: text, updated_at: new Date().toISOString() }).eq("id", coverLetterId);
+      const { error } = await supabase
+        .from("cover_letters")
+        .update({ edited_content: text, updated_at: new Date().toISOString() })
+        .eq("id", coverLetterId);
+      if (error) throw new Error(error.message);
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("cover_letters")
         .insert({ user_id: session.user.id, job_id: null, edited_content: text })
         .select("id")
         .single();
+      if (error) throw new Error(error.message);
       if (data) setCoverLetterId(data.id as number);
     }
+    setCoverLetterText(text);
   }
 
   if (loadingSession) {

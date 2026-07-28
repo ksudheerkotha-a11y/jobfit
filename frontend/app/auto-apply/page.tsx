@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 import { AUTO_APPLY_QUEUE_SELECT, AutoApplyQueueItem, AutoApplySettings, ResumeVersion } from "@/lib/types";
@@ -32,9 +32,16 @@ export default function AutoApply() {
   const [loadingData, setLoadingData] = useState(true);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<string | null>(null);
+  // A ref (not state) so it's checked/set synchronously — the auto-trigger
+  // effect and the manual "Run now" button both call runNow(), and without
+  // this guard they could race: both read the daily cap, both see room,
+  // both insert, and the cap is silently exceeded.
+  const runningRef = useRef(false);
 
   const runNow = useCallback(async (): Promise<{ created: number; reason?: string; error?: string }> => {
     if (!session) return { created: 0 };
+    if (runningRef.current) return { created: 0, reason: "already_running" };
+    runningRef.current = true;
     try {
       const res = await fetch("/api/auto-apply/run", {
         method: "POST",
@@ -45,12 +52,15 @@ export default function AutoApply() {
       return data;
     } catch {
       return { created: 0, error: "Couldn't reach the server — check your connection and try again." };
+    } finally {
+      runningRef.current = false;
     }
   }, [session]);
 
   function describeRunResult(result: { created: number; reason?: string; error?: string }): string {
     if (result.error) return `Run failed: ${result.error}`;
     if (result.created > 0) return `Queued ${result.created} new draft${result.created === 1 ? "" : "s"}.`;
+    if (result.reason === "already_running") return "A check is already in progress — hang tight.";
     if (result.reason === "no_resume") return "No resume text found — set a resume in the dropdown above or add one in the Resume Center.";
     if (result.reason === "cap_reached") return "Today's daily cap is already used up — raise it above or check back tomorrow.";
     if (result.reason === "disabled") return "Auto Apply is off — enable it above first.";
@@ -118,15 +128,17 @@ export default function AutoApply() {
 
   async function handleMarkApplied(item: AutoApplyQueueItem) {
     if (!session) return;
-    await supabase.from("auto_apply_queue").update({ status: "applied" }).eq("id", item.id);
-    setQueueItems((prev) => prev.map((q) => (q.id === item.id ? { ...q, status: "applied" } : q)));
+    const { error: queueError } = await supabase.from("auto_apply_queue").update({ status: "applied" }).eq("id", item.id);
+    if (queueError) throw new Error(queueError.message);
 
-    await supabase
+    const { error: matchError } = await supabase
       .from("matches")
       .update({ status: "applied", applied_at: new Date().toISOString() })
       .eq("job_id", item.job_id)
       .eq("user_id", session.user.id);
+    if (matchError) throw new Error(matchError.message);
 
+    setQueueItems((prev) => prev.map((q) => (q.id === item.id ? { ...q, status: "applied" } : q)));
     logActivity(session.user.id, "application", item.job_id, "status_changed", {
       from: "new",
       to: "applied",
@@ -137,7 +149,8 @@ export default function AutoApply() {
 
   async function handleDismiss(item: AutoApplyQueueItem) {
     if (!session) return;
-    await supabase.from("auto_apply_queue").update({ status: "dismissed" }).eq("id", item.id);
+    const { error } = await supabase.from("auto_apply_queue").update({ status: "dismissed" }).eq("id", item.id);
+    if (error) throw new Error(error.message);
     setQueueItems((prev) => prev.map((q) => (q.id === item.id ? { ...q, status: "dismissed" } : q)));
     logActivity(session.user.id, "application", item.job_id, "auto_apply_queue_dismissed", {
       company: item.jobs?.company,

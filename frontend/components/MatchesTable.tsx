@@ -39,13 +39,17 @@ export function MatchesTable({
   onNotesChange: (jobId: string, notes: string) => void;
   onSaveTailoredResume: (text: string, jobTitle: string, company: string) => Promise<void>;
 }) {
-  const [openPanel, setOpenPanel] = useState<{ idx: number; type: PanelType } | null>(null);
+  // Everything below is keyed by job_id, not array index — visibleMatches
+  // (the `matches` prop) gets re-sorted/re-filtered on every search/sort
+  // change, so an index-keyed panel would silently show/save the wrong
+  // job's notes or AI draft after the list reorders.
+  const [openPanel, setOpenPanel] = useState<{ jobId: string; type: PanelType } | null>(null);
   const [panels, setPanels] = useState<Record<string, PanelState>>({});
-  const [notesDraft, setNotesDraft] = useState<Record<number, string>>({});
-  const [savedTailorIdx, setSavedTailorIdx] = useState<number | null>(null);
+  const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
+  const [savedTailorJobId, setSavedTailorJobId] = useState<string | null>(null);
 
-  function panelKey(idx: number, type: PanelType) {
-    return `${idx}:${type}`;
+  function panelKey(jobId: string, type: PanelType) {
+    return `${jobId}:${type}`;
   }
 
   function findContact(company: string): Contact | undefined {
@@ -55,19 +59,19 @@ export function MatchesTable({
     );
   }
 
-  function togglePanel(idx: number, type: PanelType) {
-    setOpenPanel((prev) => (prev?.idx === idx && prev.type === type ? null : { idx, type }));
+  function togglePanel(jobId: string, type: PanelType) {
+    setOpenPanel((prev) => (prev?.jobId === jobId && prev.type === type ? null : { jobId, type }));
   }
 
   async function runGroqPanel(
-    idx: number,
+    jobId: string,
     type: PanelType,
     endpoint: string,
     body: object,
     extract: (data: any) => string,
     activity: { jobId: string; action: string; metadata: Record<string, unknown> }
   ) {
-    const key = panelKey(idx, type);
+    const key = panelKey(jobId, type);
     setPanels((p) => ({ ...p, [key]: { loading: true, text: p[key]?.text ?? "", error: null } }));
     try {
       const res = await fetch(endpoint, {
@@ -87,14 +91,14 @@ export function MatchesTable({
     }
   }
 
-  function handleDraft(idx: number, m: MatchedJobRow) {
-    togglePanel(idx, "cover-letter");
+  function handleDraft(m: MatchedJobRow) {
+    togglePanel(m.job_id, "cover-letter");
     if (!resumeText.trim()) {
-      setPanels((p) => ({ ...p, [panelKey(idx, "cover-letter")]: { loading: false, text: "", error: "Save a resume above first." } }));
+      setPanels((p) => ({ ...p, [panelKey(m.job_id, "cover-letter")]: { loading: false, text: "", error: "Save a resume above first." } }));
       return;
     }
     runGroqPanel(
-      idx,
+      m.job_id,
       "cover-letter",
       "/api/draft-cover-letter",
       { resumeText, jobTitle: m.jobs?.title, company: m.jobs?.company, jobDescription: m.jobs?.description },
@@ -103,14 +107,14 @@ export function MatchesTable({
     );
   }
 
-  function handleTailor(idx: number, m: MatchedJobRow) {
-    togglePanel(idx, "tailor-resume");
+  function handleTailor(m: MatchedJobRow) {
+    togglePanel(m.job_id, "tailor-resume");
     if (!resumeText.trim()) {
-      setPanels((p) => ({ ...p, [panelKey(idx, "tailor-resume")]: { loading: false, text: "", error: "Save a resume above first." } }));
+      setPanels((p) => ({ ...p, [panelKey(m.job_id, "tailor-resume")]: { loading: false, text: "", error: "Save a resume above first." } }));
       return;
     }
     runGroqPanel(
-      idx,
+      m.job_id,
       "tailor-resume",
       "/api/tailor-resume",
       { resumeText, jobTitle: m.jobs?.title, company: m.jobs?.company, jobDescription: m.jobs?.description },
@@ -119,14 +123,14 @@ export function MatchesTable({
     );
   }
 
-  function handleReferral(idx: number, m: MatchedJobRow, contact: Contact) {
-    togglePanel(idx, "referral");
+  function handleReferral(m: MatchedJobRow, contact: Contact) {
+    togglePanel(m.job_id, "referral");
     if (!resumeText.trim()) {
-      setPanels((p) => ({ ...p, [panelKey(idx, "referral")]: { loading: false, text: "", error: "Save a resume above first." } }));
+      setPanels((p) => ({ ...p, [panelKey(m.job_id, "referral")]: { loading: false, text: "", error: "Save a resume above first." } }));
       return;
     }
     runGroqPanel(
-      idx,
+      m.job_id,
       "referral",
       "/api/referral-draft",
       {
@@ -142,14 +146,14 @@ export function MatchesTable({
     );
   }
 
-  function handleFollowup(idx: number, m: MatchedJobRow) {
-    togglePanel(idx, "followup");
+  function handleFollowup(m: MatchedJobRow) {
+    togglePanel(m.job_id, "followup");
     if (!resumeText.trim()) {
-      setPanels((p) => ({ ...p, [panelKey(idx, "followup")]: { loading: false, text: "", error: "Save a resume above first." } }));
+      setPanels((p) => ({ ...p, [panelKey(m.job_id, "followup")]: { loading: false, text: "", error: "Save a resume above first." } }));
       return;
     }
     runGroqPanel(
-      idx,
+      m.job_id,
       "followup",
       "/api/draft-followup",
       {
@@ -164,9 +168,9 @@ export function MatchesTable({
     );
   }
 
-  function handleNotesOpen(idx: number, m: MatchedJobRow) {
-    togglePanel(idx, "notes");
-    setNotesDraft((d) => (idx in d ? d : { ...d, [idx]: m.notes ?? "" }));
+  function handleNotesOpen(m: MatchedJobRow) {
+    togglePanel(m.job_id, "notes");
+    setNotesDraft((d) => (m.job_id in d ? d : { ...d, [m.job_id]: m.notes ?? "" }));
   }
 
   function handleCopy(text: string) {
@@ -207,7 +211,7 @@ export function MatchesTable({
           </tr>
         </thead>
         <tbody>
-          {matches.map((m, i) => {
+          {matches.map((m) => {
             const pct = Math.round(m.fit_score * 100);
             const visible = m.missing_skills.slice(0, MAX_VISIBLE_SKILLS);
             const overflow = m.missing_skills.length - visible.length;
@@ -216,8 +220,8 @@ export function MatchesTable({
             const needsFollowUp =
               m.status === "applied" && m.applied_at && daysSince(m.applied_at) >= FOLLOW_UP_DAYS;
 
-            const isPanelOpen = (type: PanelType) => openPanel?.idx === i && openPanel.type === type;
-            const activePanel = openPanel?.idx === i ? panels[panelKey(i, openPanel.type)] : undefined;
+            const isPanelOpen = (type: PanelType) => openPanel?.jobId === m.job_id && openPanel.type === type;
+            const activePanel = openPanel?.jobId === m.job_id ? panels[panelKey(m.job_id, openPanel.type)] : undefined;
 
             return (
               <Fragment key={m.job_id}>
@@ -271,33 +275,33 @@ export function MatchesTable({
                   <td>
                     <div className="row-actions">
                       <div className="row-actions-top">
-                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleDraft(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleDraft(m)}>
                           <MailIcon size={14} />
                           {isPanelOpen("cover-letter") ? "Hide letter" : "Cover letter"}
                         </button>
-                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleTailor(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleTailor(m)}>
                           <SparkleIcon size={14} />
                           {isPanelOpen("tailor-resume") ? "Hide tailor" : "Tailor resume"}
                         </button>
                       </div>
                       <div className="row-actions-top">
-                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleNotesOpen(i, m)}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleNotesOpen(m)}>
                           <NoteIcon size={14} />
                           {isPanelOpen("notes") ? "Hide notes" : m.notes ? "Notes ●" : "Notes"}
                         </button>
                         {contact && (
-                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleReferral(i, m, contact)}>
+                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleReferral(m, contact)}>
                             <UsersIcon size={14} />
                             {isPanelOpen("referral") ? "Hide ask" : "Referral ask"}
                           </button>
                         )}
                         {needsFollowUp && (
-                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleFollowup(i, m)}>
+                          <button type="button" className="ghost icon-btn row-action-btn" onClick={() => handleFollowup(m)}>
                             <BellIcon size={14} />
                             {isPanelOpen("followup") ? "Hide follow-up" : "Draft follow-up"}
                           </button>
                         )}
-                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => togglePanel(i, "timeline")}>
+                        <button type="button" className="ghost icon-btn row-action-btn" onClick={() => togglePanel(m.job_id, "timeline")}>
                           <ActivityIcon size={14} />
                           {isPanelOpen("timeline") ? "Hide timeline" : "Timeline"}
                         </button>
@@ -310,7 +314,7 @@ export function MatchesTable({
                     </div>
                   </td>
                 </tr>
-                {openPanel?.idx === i && (
+                {openPanel?.jobId === m.job_id && (
                   <tr>
                     <td colSpan={6}>
                       {openPanel.type === "timeline" ? (
@@ -319,12 +323,12 @@ export function MatchesTable({
                         <div>
                           <textarea
                             rows={4}
-                            value={notesDraft[i] ?? ""}
-                            onChange={(e) => setNotesDraft((d) => ({ ...d, [i]: e.target.value }))}
+                            value={notesDraft[m.job_id] ?? ""}
+                            onChange={(e) => setNotesDraft((d) => ({ ...d, [m.job_id]: e.target.value }))}
                             placeholder="Interviewer names, comp discussed, questions asked, anything worth remembering..."
                             style={{ marginBottom: "0.5rem" }}
                           />
-                          <button type="button" onClick={() => onNotesChange(m.job_id, notesDraft[i] ?? "")}>
+                          <button type="button" onClick={() => onNotesChange(m.job_id, notesDraft[m.job_id] ?? "")}>
                             Save notes
                           </button>
                         </div>
@@ -344,7 +348,7 @@ export function MatchesTable({
                                 onChange={(e) =>
                                   setPanels((p) => ({
                                     ...p,
-                                    [panelKey(i, openPanel.type)]: { ...p[panelKey(i, openPanel.type)], text: e.target.value },
+                                    [panelKey(m.job_id, openPanel.type)]: { ...p[panelKey(m.job_id, openPanel.type)], text: e.target.value },
                                   }))
                                 }
                                 style={{ marginBottom: "0.5rem" }}
@@ -357,10 +361,10 @@ export function MatchesTable({
                                   type="button"
                                   className="ghost"
                                   onClick={() => {
-                                    if (openPanel.type === "cover-letter") handleDraft(i, m);
-                                    else if (openPanel.type === "tailor-resume") handleTailor(i, m);
-                                    else if (openPanel.type === "referral" && contact) handleReferral(i, m, contact);
-                                    else if (openPanel.type === "followup") handleFollowup(i, m);
+                                    if (openPanel.type === "cover-letter") handleDraft(m);
+                                    else if (openPanel.type === "tailor-resume") handleTailor(m);
+                                    else if (openPanel.type === "referral" && contact) handleReferral(m, contact);
+                                    else if (openPanel.type === "followup") handleFollowup(m);
                                   }}
                                 >
                                   Regenerate
@@ -370,11 +374,21 @@ export function MatchesTable({
                                     type="button"
                                     className="ghost"
                                     onClick={async () => {
-                                      await onSaveTailoredResume(activePanel.text, m.jobs?.title ?? "role", m.jobs?.company ?? "company");
-                                      setSavedTailorIdx(i);
+                                      try {
+                                        await onSaveTailoredResume(activePanel.text, m.jobs?.title ?? "role", m.jobs?.company ?? "company");
+                                        setSavedTailorJobId(m.job_id);
+                                      } catch (err) {
+                                        setPanels((p) => ({
+                                          ...p,
+                                          [panelKey(m.job_id, "tailor-resume")]: {
+                                            ...p[panelKey(m.job_id, "tailor-resume")],
+                                            error: err instanceof Error ? err.message : "Couldn't save that version",
+                                          },
+                                        }));
+                                      }
                                     }}
                                   >
-                                    {savedTailorIdx === i ? "Saved to Resume Center ✓" : "Save as resume version"}
+                                    {savedTailorJobId === m.job_id ? "Saved to Resume Center ✓" : "Save as resume version"}
                                   </button>
                                 )}
                               </div>

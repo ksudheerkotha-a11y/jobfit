@@ -48,6 +48,7 @@ export function ProfileView({
   resumeVersions,
   coverLetterText,
   importing,
+  importError,
   onSaveProfile,
   onImportFromResume,
   onAddEducation,
@@ -69,6 +70,7 @@ export function ProfileView({
   resumeVersions: ResumeVersion[];
   coverLetterText: string;
   importing: boolean;
+  importError: string | null;
   onSaveProfile: (patch: Partial<Profile>) => Promise<void>;
   onImportFromResume: () => Promise<void>;
   onAddEducation: (input: EducationInput) => Promise<void>;
@@ -115,6 +117,7 @@ export function ProfileView({
           Pulls summary, education, experience, and skills out of your default resume as a starting
           point — never overwrites what you already have here, only adds to it.
         </p>
+        {importError && <p className="error" style={{ margin: "0.4rem 0 0" }}>{importError}</p>}
       </div>
 
       <div className="two-col-grid">
@@ -146,12 +149,19 @@ function IdentityCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(profile);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
-    await onSave(draft);
-    setSaving(false);
-    setEditing(false);
+    setSaveError(null);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save your changes");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (editing) {
@@ -190,6 +200,7 @@ function IdentityCard({
           />
           Open to work
         </label>
+        {saveError && <p className="error">{saveError}</p>}
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <button type="button" className="primary" disabled={saving} onClick={handleSave}>
             Save
@@ -247,12 +258,19 @@ function CoverLetterCard({ text, onSave }: { text: string; onSave: (text: string
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
-    await onSave(draft);
-    setSaving(false);
-    setEditing(false);
+    setSaveError(null);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save your cover letter");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -277,6 +295,7 @@ function CoverLetterCard({ text, onSave }: { text: string; onSave: (text: string
               Cancel
             </button>
           </div>
+          {saveError && <p className="error">{saveError}</p>}
         </>
       ) : (
         <>
@@ -295,6 +314,7 @@ function CoverLetterCard({ text, onSave }: { text: string; onSave: (text: string
 function SummaryEditor({ value, onSave }: { value: string; onSave: (text: string) => Promise<void> }) {
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const dirty = draft !== value;
 
   return (
@@ -308,13 +328,20 @@ function SummaryEditor({ value, onSave }: { value: string; onSave: (text: string
           disabled={saving}
           onClick={async () => {
             setSaving(true);
-            await onSave(draft);
-            setSaving(false);
+            setSaveError(null);
+            try {
+              await onSave(draft);
+            } catch (err) {
+              setSaveError(err instanceof Error ? err.message : "Couldn't save your summary");
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           {saving ? "Saving..." : "Save"}
         </button>
       )}
+      {saveError && <p className="error" style={{ marginTop: "0.5rem" }}>{saveError}</p>}
     </div>
   );
 }
@@ -331,6 +358,7 @@ function EducationSection({
   const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState<EducationInput>({ school: "", degree: "", field: "", start_date: "", end_date: "" });
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   return (
     <div className="card">
@@ -352,7 +380,7 @@ function EducationSection({
               {e.school} {e.start_date && `· ${e.start_date}–${e.end_date || "Present"}`}
             </p>
             <div className="resume-version-actions">
-              <button type="button" className="ghost" onClick={() => onDelete(e.id)}>
+              <button type="button" className="ghost" onClick={() => onDelete(e.id).catch((err) => console.warn("Failed to delete education entry:", err))}>
                 Delete
               </button>
             </div>
@@ -376,10 +404,16 @@ function EducationSection({
               disabled={saving || !draft.school.trim()}
               onClick={async () => {
                 setSaving(true);
-                await onAdd(draft);
-                setSaving(false);
-                setDraft({ school: "", degree: "", field: "", start_date: "", end_date: "" });
-                setAddOpen(false);
+                setAddError(null);
+                try {
+                  await onAdd(draft);
+                  setDraft({ school: "", degree: "", field: "", start_date: "", end_date: "" });
+                  setAddOpen(false);
+                } catch (err) {
+                  setAddError(err instanceof Error ? err.message : "Couldn't add that entry");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               Add
@@ -388,6 +422,7 @@ function EducationSection({
               Cancel
             </button>
           </div>
+          {addError && <p className="error">{addError}</p>}
         </div>
       ) : (
         <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>
@@ -412,6 +447,7 @@ function ExperienceSection({
   const [draft, setDraft] = useState<ExperienceInput>(empty);
   const [bulletsText, setBulletsText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   return (
     <div className="card">
@@ -439,7 +475,7 @@ function ExperienceSection({
               </ul>
             )}
             <div className="resume-version-actions">
-              <button type="button" className="ghost" onClick={() => onDelete(e.id)}>
+              <button type="button" className="ghost" onClick={() => onDelete(e.id).catch((err) => console.warn("Failed to delete experience entry:", err))}>
                 Delete
               </button>
             </div>
@@ -470,12 +506,18 @@ function ExperienceSection({
               disabled={saving || !draft.title.trim()}
               onClick={async () => {
                 setSaving(true);
+                setAddError(null);
                 const bullets = bulletsText.split("\n").map((b) => b.trim()).filter(Boolean);
-                await onAdd({ ...draft, bullets });
-                setSaving(false);
-                setDraft(empty);
-                setBulletsText("");
-                setAddOpen(false);
+                try {
+                  await onAdd({ ...draft, bullets });
+                  setDraft(empty);
+                  setBulletsText("");
+                  setAddOpen(false);
+                } catch (err) {
+                  setAddError(err instanceof Error ? err.message : "Couldn't add that role");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               Add
@@ -484,6 +526,7 @@ function ExperienceSection({
               Cancel
             </button>
           </div>
+          {addError && <p className="error">{addError}</p>}
         </div>
       ) : (
         <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>
@@ -508,6 +551,7 @@ function ProjectsSection({
   const [draft, setDraft] = useState<ProjectInput>(empty);
   const [bulletsText, setBulletsText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   return (
     <div className="card">
@@ -536,7 +580,7 @@ function ProjectsSection({
               </ul>
             )}
             <div className="resume-version-actions">
-              <button type="button" className="ghost" onClick={() => onDelete(p.id)}>
+              <button type="button" className="ghost" onClick={() => onDelete(p.id).catch((err) => console.warn("Failed to delete project:", err))}>
                 Delete
               </button>
             </div>
@@ -563,12 +607,18 @@ function ProjectsSection({
               disabled={saving || !draft.title.trim()}
               onClick={async () => {
                 setSaving(true);
+                setAddError(null);
                 const bullets = bulletsText.split("\n").map((b) => b.trim()).filter(Boolean);
-                await onAdd({ ...draft, bullets });
-                setSaving(false);
-                setDraft(empty);
-                setBulletsText("");
-                setAddOpen(false);
+                try {
+                  await onAdd({ ...draft, bullets });
+                  setDraft(empty);
+                  setBulletsText("");
+                  setAddOpen(false);
+                } catch (err) {
+                  setAddError(err instanceof Error ? err.message : "Couldn't add that project");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               Add
@@ -577,6 +627,7 @@ function ProjectsSection({
               Cancel
             </button>
           </div>
+          {addError && <p className="error">{addError}</p>}
         </div>
       ) : (
         <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>
@@ -637,7 +688,7 @@ function ApplicationDefaultsCard({
                   type="button"
                   className={active ? "primary" : "ghost"}
                   style={{ padding: "0.3rem 0.75rem", fontSize: "0.8125rem" }}
-                  onClick={() => onSave({ [key]: !active } as Partial<Profile>)}
+                  onClick={() => onSave({ [key]: !active } as Partial<Profile>).catch((err) => console.warn("Failed to save preference:", err))}
                 >
                   {active ? "✓ " : ""}
                   {fieldLabels[key]}
@@ -664,6 +715,7 @@ function SkillsSection({
   const [category, setCategory] = useState(DEFAULT_CATEGORIES[0]);
   const [skill, setSkill] = useState("");
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const grouped = skills.reduce<Record<string, SkillEntry[]>>((acc, s) => {
     (acc[s.category] ??= []).push(s);
@@ -693,7 +745,7 @@ function SkillsSection({
                 {s.skill}
                 <button
                   type="button"
-                  onClick={() => onDelete(s.id)}
+                  onClick={() => onDelete(s.id).catch((err) => console.warn("Failed to delete skill:", err))}
                   aria-label={`Remove ${s.skill}`}
                   style={{ border: "none", background: "none", padding: 0, cursor: "pointer", color: "inherit", font: "inherit" }}
                 >
@@ -719,9 +771,15 @@ function SkillsSection({
             disabled={saving || !skill.trim()}
             onClick={async () => {
               setSaving(true);
-              await onAdd(category, skill.trim());
-              setSaving(false);
-              setSkill("");
+              setAddError(null);
+              try {
+                await onAdd(category, skill.trim());
+                setSkill("");
+              } catch (err) {
+                setAddError(err instanceof Error ? err.message : "Couldn't add that skill");
+              } finally {
+                setSaving(false);
+              }
             }}
           >
             Add
@@ -729,6 +787,7 @@ function SkillsSection({
           <button type="button" className="ghost" onClick={() => setAddOpen(false)}>
             Done
           </button>
+          {addError && <p className="error" style={{ width: "100%", margin: 0 }}>{addError}</p>}
         </div>
       ) : (
         <button type="button" className="ghost" style={{ marginTop: "0.85rem" }} onClick={() => setAddOpen(true)}>

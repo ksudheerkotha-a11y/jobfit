@@ -49,14 +49,22 @@ export function NotificationBell({ session }: { session: Session }) {
 
   async function markRead(id: number) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
+      console.warn("Failed to mark notification read:", error.message);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: false } : n)));
+    }
   }
 
   async function markAllRead() {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
     if (unreadIds.length === 0) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
+    const { error } = await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
+    if (error) {
+      console.warn("Failed to mark all notifications read:", error.message);
+      setNotifications((prev) => prev.map((n) => (unreadIds.includes(n.id) ? { ...n, is_read: false } : n)));
+    }
   }
 
   return (

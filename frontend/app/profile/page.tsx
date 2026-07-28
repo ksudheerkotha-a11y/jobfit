@@ -49,6 +49,7 @@ export default function ProfilePage() {
   const [coverLetterText, setCoverLetterText] = useState("");
   const [loadingData, setLoadingData] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -78,8 +79,9 @@ export default function ProfilePage() {
   async function handleSaveProfile(patch: Partial<Profile>) {
     if (!session) return;
     const merged = { ...profile, ...patch, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from("profile").upsert({ user_id: session.user.id, ...merged });
+    if (error) throw new Error(error.message);
     setProfile(merged);
-    await supabase.from("profile").upsert({ user_id: session.user.id, ...merged });
     logActivity(session.user.id, "profile", session.user.id, "profile_updated", {});
   }
 
@@ -95,7 +97,8 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteEducation(id: number) {
-    await supabase.from("profile_education").delete().eq("id", id);
+    const { error } = await supabase.from("profile_education").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setEducation((prev) => prev.filter((e) => e.id !== id));
   }
 
@@ -111,7 +114,8 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteExperience(id: number) {
-    await supabase.from("profile_experience").delete().eq("id", id);
+    const { error } = await supabase.from("profile_experience").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setExperience((prev) => prev.filter((e) => e.id !== id));
   }
 
@@ -127,7 +131,8 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteProject(id: number) {
-    await supabase.from("profile_projects").delete().eq("id", id);
+    const { error } = await supabase.from("profile_projects").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
@@ -144,23 +149,29 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteSkill(id: number) {
-    await supabase.from("profile_skills").delete().eq("id", id);
+    const { error } = await supabase.from("profile_skills").delete().eq("id", id);
+    if (error) throw new Error(error.message);
     setSkills((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function handleSaveCoverLetter(text: string) {
     if (!session) return;
-    setCoverLetterText(text);
     if (coverLetterId) {
-      await supabase.from("cover_letters").update({ edited_content: text, updated_at: new Date().toISOString() }).eq("id", coverLetterId);
+      const { error } = await supabase
+        .from("cover_letters")
+        .update({ edited_content: text, updated_at: new Date().toISOString() })
+        .eq("id", coverLetterId);
+      if (error) throw new Error(error.message);
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("cover_letters")
         .insert({ user_id: session.user.id, job_id: null, edited_content: text })
         .select("id")
         .single();
+      if (error) throw new Error(error.message);
       if (data) setCoverLetterId(data.id as number);
     }
+    setCoverLetterText(text);
   }
 
   async function handleImportFromResume() {
@@ -169,6 +180,7 @@ export default function ProfilePage() {
     if (!resumeText.trim()) return;
 
     setImporting(true);
+    setImportError(null);
     try {
       const res = await fetch("/api/parse-profile", {
         method: "POST",
@@ -229,9 +241,8 @@ export default function ProfilePage() {
       }
 
       logActivity(session.user.id, "profile", session.user.id, "profile_imported_from_resume", {});
-    } catch {
-      // Silently no-op on failure — the AI import is a convenience, not a
-      // required step, and the manual add forms are always right there.
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Import failed — try again");
     } finally {
       setImporting(false);
     }
@@ -280,6 +291,7 @@ export default function ProfilePage() {
           resumeVersions={resumeVersions}
           coverLetterText={coverLetterText}
           importing={importing}
+          importError={importError}
           onSaveProfile={handleSaveProfile}
           onImportFromResume={handleImportFromResume}
           onAddEducation={handleAddEducation}

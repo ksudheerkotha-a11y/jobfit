@@ -18,9 +18,15 @@ export function SavedJobs({
   onUnsave: (jobId: string) => void;
 }) {
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
+  const [unsaveError, setUnsaveError] = useState<string | null>(null);
 
   async function handleUnsave(jobId: string, title?: string, company?: string) {
-    await supabase.from("saved_jobs").delete().eq("user_id", userId).eq("job_id", jobId);
+    setUnsaveError(null);
+    const { error } = await supabase.from("saved_jobs").delete().eq("user_id", userId).eq("job_id", jobId);
+    if (error) {
+      setUnsaveError(error.message);
+      return;
+    }
     logActivity(userId, "job", jobId, "job_unsaved", { title, company });
     onUnsave(jobId);
     setCompareIds((prev) => {
@@ -53,6 +59,8 @@ export function SavedJobs({
       <p className="hint" style={{ marginBottom: "0.75rem" }}>
         Bookmarks — separate from your AI-scored shortlist. Check up to {MAX_COMPARE} to compare.
       </p>
+
+      {unsaveError && <p className="error">{unsaveError}</p>}
 
       {savedJobs.length === 0 ? (
         <p className="empty-state">

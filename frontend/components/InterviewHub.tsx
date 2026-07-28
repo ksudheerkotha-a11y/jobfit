@@ -183,6 +183,7 @@ function InterviewCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [prepOpen, setPrepOpen] = useState(false);
   const [prep, setPrep] = useState<{ loading: boolean; text: string; error: string | null } | null>(null);
   const stageLabel = INTERVIEW_STAGE_LABELS[interview.stage as InterviewStage] ?? interview.stage;
@@ -220,6 +221,7 @@ function InterviewCard({
   if (editing) {
     return (
       <div className="resume-version-card">
+        {actionError && <p className="error">{actionError}</p>}
         <InterviewForm
           initial={interview}
           matches={[]}
@@ -227,9 +229,15 @@ function InterviewCard({
           onCancel={() => setEditing(false)}
           onSave={async (input) => {
             setBusy(true);
-            await onUpdate(interview.id, input);
-            setBusy(false);
-            setEditing(false);
+            setActionError(null);
+            try {
+              await onUpdate(interview.id, input);
+              setEditing(false);
+            } catch (err) {
+              setActionError(err instanceof Error ? err.message : "Couldn't save that change");
+            } finally {
+              setBusy(false);
+            }
           }}
         />
       </div>
@@ -271,12 +279,20 @@ function InterviewCard({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            await onDelete(interview.id);
+            setActionError(null);
+            try {
+              await onDelete(interview.id);
+            } catch (err) {
+              setActionError(err instanceof Error ? err.message : "Couldn't delete that interview");
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           Delete
         </button>
       </div>
+      {actionError && <p className="error">{actionError}</p>}
 
       {prepOpen && (
         <div style={{ marginTop: "0.75rem" }}>

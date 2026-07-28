@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
     .slice(0, remaining);
 
   let created = 0;
+  let draftFailures = 0;
   for (const m of candidates) {
     const jd = m.jobs!;
     const [coverLetter, tailored] = await Promise.all([
@@ -154,7 +155,10 @@ export async function POST(req: NextRequest) {
       ),
     ]);
 
-    if ("error" in coverLetter || "error" in tailored) continue;
+    if ("error" in coverLetter || "error" in tailored) {
+      draftFailures += 1;
+      continue;
+    }
 
     const { error } = await admin.from("auto_apply_queue").insert({
       user_id: userId,
@@ -163,7 +167,22 @@ export async function POST(req: NextRequest) {
       tailored_resume_draft: tailored.text,
       status: "queued",
     });
-    if (!error) created += 1;
+    if (error) {
+      draftFailures += 1;
+    } else {
+      created += 1;
+    }
+  }
+
+  // Distinguishes "nothing qualified" (created: 0, no reason — a real,
+  // non-error outcome) from "matches qualified but drafting them failed"
+  // (created: 0 + error) so the client doesn't tell the user to lower their
+  // quality bar when the real problem was a Groq/DB failure.
+  if (created === 0 && draftFailures > 0) {
+    return NextResponse.json({
+      created: 0,
+      error: "Couldn't generate drafts for the qualifying matches — try again shortly.",
+    });
   }
 
   return NextResponse.json({ created });

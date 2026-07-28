@@ -39,6 +39,7 @@ export function AutoApplyView({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
   const queued = queueItems.filter((q) => q.status === "queued");
@@ -58,8 +59,14 @@ export function AutoApplyView({
 
   async function handleAction(item: AutoApplyQueueItem, action: (item: AutoApplyQueueItem) => Promise<void>) {
     setBusyId(item.id);
-    await action(item);
-    setBusyId(null);
+    setActionError(null);
+    try {
+      await action(item);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "That action didn't go through — try again");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -166,6 +173,8 @@ export function AutoApplyView({
           <h2 style={{ margin: 0 }}>Review queue</h2>
           <span className="hint" style={{ margin: 0 }}>{queued.length} waiting on you</span>
         </div>
+
+        {actionError && <p className="error">{actionError}</p>}
 
         {queued.length === 0 ? (
           <p className="empty-state">

@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { ChatBubbleIcon, Logomark, SparkleIcon } from "@/components/icons";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ASSISTANT_OPEN_EVENT, ASSISTANT_OPEN_KEY } from "@/lib/useAssistantOpen";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
@@ -19,6 +20,11 @@ const NAV_LINKS = [
 ] as const;
 
 export type ActiveRoute = (typeof NAV_LINKS)[number]["href"];
+
+function openAssistant() {
+  localStorage.setItem(ASSISTANT_OPEN_KEY, "1");
+  window.dispatchEvent(new Event(ASSISTANT_OPEN_EVENT));
+}
 
 export function AppHeader({ session, active }: { session: Session; active: ActiveRoute }) {
   return (
@@ -50,7 +56,13 @@ export function AppHeader({ session, active }: { session: Session; active: Activ
           </span>
         ))}
       </nav>
-      <Link href="/" className="support-bubble" aria-label="Chat with the jobfit Assistant" title="Chat with the jobfit Assistant">
+      <Link
+        href="/"
+        className="support-bubble"
+        aria-label="Chat with the jobfit Assistant"
+        title="Chat with the jobfit Assistant"
+        onClick={openAssistant}
+      >
         <ChatBubbleIcon size={20} />
       </Link>
     </header>
