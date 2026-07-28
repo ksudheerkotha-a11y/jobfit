@@ -7,8 +7,10 @@ import { AUTO_APPLY_QUEUE_SELECT, AutoApplyQueueItem, AutoApplySettings, ResumeV
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { useAssistantOpen } from "@/lib/useAssistantOpen";
 import { AutoApplyView } from "@/components/AutoApplyView";
-import { Logomark } from "@/components/icons";
+import { Logomark, SparkleIcon } from "@/components/icons";
 
 // Per-user (auth session, settings, queue) — never static.
 export const dynamic = "force-dynamic";
@@ -23,6 +25,7 @@ const DEFAULT_SETTINGS: AutoApplySettings = {
 
 export default function AutoApply() {
   const { session, loadingSession } = useSession();
+  const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [settings, setSettings] = useState<AutoApplySettings>(DEFAULT_SETTINGS);
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [queueItems, setQueueItems] = useState<AutoApplyQueueItem[]>([]);
@@ -135,26 +138,40 @@ export default function AutoApply() {
     );
   }
 
+  const content = loadingData ? (
+    <div className="card">
+      <div className="skeleton-line" style={{ width: "40%" }} />
+      <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+    </div>
+  ) : (
+    <AutoApplyView
+      settings={settings}
+      resumeVersions={resumeVersions}
+      queueItems={queueItems}
+      running={running}
+      onSaveSettings={handleSaveSettings}
+      onRunNow={handleRunNow}
+      onMarkApplied={handleMarkApplied}
+      onDismiss={handleDismiss}
+    />
+  );
+
   return (
-    <main className="container">
+    <main className={assistantOpen ? "container-wide" : "container"}>
       <AppHeader session={session} active="/auto-apply" />
 
-      {loadingData ? (
-        <div className="card">
-          <div className="skeleton-line" style={{ width: "40%" }} />
-          <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+      {assistantOpen ? (
+        <div className="assistant-layout">
+          <AssistantPanel session={session} onClose={() => setAssistantOpen(false)} />
+          <div className="assistant-layout-main">{content}</div>
         </div>
       ) : (
-        <AutoApplyView
-          settings={settings}
-          resumeVersions={resumeVersions}
-          queueItems={queueItems}
-          running={running}
-          onSaveSettings={handleSaveSettings}
-          onRunNow={handleRunNow}
-          onMarkApplied={handleMarkApplied}
-          onDismiss={handleDismiss}
-        />
+        <>
+          <button type="button" className="ghost icon-btn assistant-reopen" onClick={() => setAssistantOpen(true)}>
+            <SparkleIcon size={14} /> Assistant
+          </button>
+          {content}
+        </>
       )}
     </main>
   );

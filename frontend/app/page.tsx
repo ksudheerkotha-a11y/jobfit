@@ -9,6 +9,8 @@ import { relativeTime } from "@/lib/activityDescribe";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { useAssistantOpen } from "@/lib/useAssistantOpen";
 import { StatTile } from "@/components/StatTile";
 import {
   ActivityIcon,
@@ -34,6 +36,7 @@ const CARD_TINTS = ["match-card-tint-0", "match-card-tint-1", "match-card-tint-2
 
 export default function Home() {
   const { session, loadingSession } = useSession();
+  const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([]);
   // Starts true (not false) so the dashboard renders its loading skeleton
@@ -172,10 +175,8 @@ export default function Home() {
     );
   }
 
-  return (
-    <main className="container">
-      <AppHeader session={session} active="/" />
-
+  const content = (
+    <>
       {loadingData ? (
         <div className="stat-grid">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -362,6 +363,26 @@ export default function Home() {
         <>
           <ApplicationsChart matches={matches} />
           <ActivityFeed userId={session.user.id} />
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <main className={assistantOpen ? "container-wide" : "container"}>
+      <AppHeader session={session} active="/" />
+
+      {assistantOpen ? (
+        <div className="assistant-layout">
+          <AssistantPanel session={session} onClose={() => setAssistantOpen(false)} />
+          <div className="assistant-layout-main">{content}</div>
+        </div>
+      ) : (
+        <>
+          <button type="button" className="ghost icon-btn assistant-reopen" onClick={() => setAssistantOpen(true)}>
+            <SparkleIcon size={14} /> Assistant
+          </button>
+          {content}
         </>
       )}
     </main>

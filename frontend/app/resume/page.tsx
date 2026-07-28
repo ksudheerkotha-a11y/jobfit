@@ -7,14 +7,17 @@ import { ResumeVersion } from "@/lib/types";
 import { logActivity } from "@/lib/logActivity";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { useAssistantOpen } from "@/lib/useAssistantOpen";
 import { ResumeCenter } from "@/components/ResumeCenter";
-import { Logomark } from "@/components/icons";
+import { Logomark, SparkleIcon } from "@/components/icons";
 
 // Per-user (auth session, resume versions) — never static.
 export const dynamic = "force-dynamic";
 
 export default function Resume() {
   const { session, loadingSession } = useSession();
+  const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -135,25 +138,39 @@ export default function Resume() {
     );
   }
 
+  const content = loadingData ? (
+    <div className="card">
+      <div className="skeleton-line" style={{ width: "40%" }} />
+      <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+    </div>
+  ) : (
+    <ResumeCenter
+      accessToken={session.access_token}
+      versions={resumeVersions}
+      onAdd={handleAddResumeVersion}
+      onSetDefault={handleSetDefaultResumeVersion}
+      onUpdate={handleUpdateResumeVersion}
+      onDelete={handleDeleteResumeVersion}
+      onAnalyzed={handleAnalyzeResumeVersion}
+    />
+  );
+
   return (
-    <main className="container">
+    <main className={assistantOpen ? "container-wide" : "container"}>
       <AppHeader session={session} active="/resume" />
 
-      {loadingData ? (
-        <div className="card">
-          <div className="skeleton-line" style={{ width: "40%" }} />
-          <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+      {assistantOpen ? (
+        <div className="assistant-layout">
+          <AssistantPanel session={session} onClose={() => setAssistantOpen(false)} />
+          <div className="assistant-layout-main">{content}</div>
         </div>
       ) : (
-        <ResumeCenter
-          accessToken={session.access_token}
-          versions={resumeVersions}
-          onAdd={handleAddResumeVersion}
-          onSetDefault={handleSetDefaultResumeVersion}
-          onUpdate={handleUpdateResumeVersion}
-          onDelete={handleDeleteResumeVersion}
-          onAnalyzed={handleAnalyzeResumeVersion}
-        />
+        <>
+          <button type="button" className="ghost icon-btn assistant-reopen" onClick={() => setAssistantOpen(true)}>
+            <SparkleIcon size={14} /> Assistant
+          </button>
+          {content}
+        </>
       )}
     </main>
   );

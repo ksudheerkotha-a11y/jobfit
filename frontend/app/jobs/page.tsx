@@ -6,10 +6,12 @@ import { useSession } from "@/lib/useSession";
 import { JobRow, ResumeVersion, SavedJob } from "@/lib/types";
 import { SignIn } from "@/components/SignIn";
 import { AppHeader } from "@/components/AppHeader";
+import { AssistantPanel } from "@/components/AssistantPanel";
+import { useAssistantOpen } from "@/lib/useAssistantOpen";
 import { JobSearch } from "@/components/JobSearch";
 import { BrowseMatches } from "@/components/BrowseMatches";
 import { SavedJobs } from "@/components/SavedJobs";
-import { Logomark } from "@/components/icons";
+import { Logomark, SparkleIcon } from "@/components/icons";
 
 // Per-user (auth session, saved jobs, resume) — never static.
 export const dynamic = "force-dynamic";
@@ -19,6 +21,7 @@ const SAVED_JOBS_SELECT =
 
 export default function Jobs() {
   const { session, loadingSession } = useSession();
+  const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -75,20 +78,34 @@ export default function Jobs() {
     );
   }
 
+  const content = loadingData ? (
+    <div className="card">
+      <div className="skeleton-line" style={{ width: "40%" }} />
+      <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+    </div>
+  ) : (
+    <>
+      <BrowseMatches resumeText={resumeText} accessToken={session.access_token} />
+      <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
+      <SavedJobs userId={session.user.id} savedJobs={savedJobs} onUnsave={handleUnsave} />
+    </>
+  );
+
   return (
-    <main className="container">
+    <main className={assistantOpen ? "container-wide" : "container"}>
       <AppHeader session={session} active="/jobs" />
 
-      {loadingData ? (
-        <div className="card">
-          <div className="skeleton-line" style={{ width: "40%" }} />
-          <div className="skeleton-line" style={{ width: "70%", marginTop: "0.5rem" }} />
+      {assistantOpen ? (
+        <div className="assistant-layout">
+          <AssistantPanel session={session} onClose={() => setAssistantOpen(false)} />
+          <div className="assistant-layout-main">{content}</div>
         </div>
       ) : (
         <>
-          <BrowseMatches resumeText={resumeText} accessToken={session.access_token} />
-          <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
-          <SavedJobs userId={session.user.id} savedJobs={savedJobs} onUnsave={handleUnsave} />
+          <button type="button" className="ghost icon-btn assistant-reopen" onClick={() => setAssistantOpen(true)}>
+            <SparkleIcon size={14} /> Assistant
+          </button>
+          {content}
         </>
       )}
     </main>

@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   --surface-1: #fcfcfb;
-  --page-plane: #f9f9f7;
+  --page-plane: #f6f6f4;
   --surface-card: #ffffff;
   --text-primary: #0b0b0b;
   --text-secondary: #52514e;
@@ -23,11 +23,11 @@
   --shadow-card: 0 1px 2px rgba(11, 11, 11, 0.04), 0 10px 28px -14px rgba(11, 11, 11, 0.14);
   --shadow-card-hover: 0 1px 2px rgba(11, 11, 11, 0.05), 0 16px 36px -14px rgba(11, 11, 11, 0.18);
   --shadow-accent: 0 1px 2px rgba(11, 11, 11, 0.04), 0 12px 28px -12px color-mix(in srgb, var(--accent) 35%, transparent);
-  --tint-rose: #fbe4e1;
-  --tint-sky: #dbeafe;
-  --tint-amber: #fdedd3;
-  --tint-mint: #dcf3e4;
-  --tint-violet: #e8e1fb;
+  --tint-rose: #fce8e8;
+  --tint-sky: #e6eef5;
+  --tint-amber: #f5ecda;
+  --tint-mint: #dcefdf;
+  --tint-violet: #eae6f6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -430,7 +430,7 @@ input {
   font: inherit;
   padding: 0.6rem 0.7rem;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 12px;
   background: var(--surface-card);
   color: var(--text-primary);
   width: 100%;
@@ -458,7 +458,7 @@ input:focus {
 .card {
   background: var(--surface-card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 1.5rem;
   box-shadow: var(--shadow-card);
   transition: box-shadow 0.2s ease;
@@ -1289,4 +1289,161 @@ select.control-input {
 .match-card-actions a {
   padding: 0.3rem 0.7rem;
   font-size: 0.75rem;
+}
+
+/* ---------- Assistant layout + panel ---------- */
+
+.container-wide {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.assistant-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.assistant-layout-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.assistant-reopen {
+  position: sticky;
+  top: 2.5rem;
+  flex-shrink: 0;
+}
+
+.assistant-panel {
+  flex: 0 0 340px;
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 3rem);
+  max-height: 720px;
+}
+
+.assistant-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.assistant-panel-intro {
+  overflow-y: auto;
+}
+
+.assistant-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}
+
+.assistant-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.assistant-suggestion-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.assistant-suggestion-card:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border);
+}
+
+.assistant-suggestion-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.assistant-thread {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-right: 0.25rem;
+}
+
+.assistant-bubble {
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  max-width: 90%;
+}
+
+.assistant-bubble-user {
+  align-self: flex-end;
+  background: var(--text-primary);
+  color: var(--surface-card);
+}
+
+.assistant-bubble-assistant {
+  align-self: flex-start;
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+}
+
+.assistant-input-row {
+  position: relative;
+  margin-top: 0.85rem;
+  flex-shrink: 0;
+}
+
+.assistant-input {
+  width: 100%;
+  padding-right: 2.75rem;
+  border-radius: 999px;
+}
+
+.assistant-send {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .assistant-layout {
+    flex-direction: column;
+  }
+
+  .assistant-panel {
+    position: static;
+    flex-basis: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
 }
