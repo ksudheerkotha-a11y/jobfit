@@ -9,9 +9,9 @@ import { ASSISTANT_OPEN_EVENT, ASSISTANT_OPEN_KEY } from "@/lib/useAssistantOpen
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
+  { href: "/tracker", label: "Tracker" },
   { href: "/jobs", label: "Browse jobs" },
   { href: "/auto-apply", label: "Auto Apply" },
-  { href: "/tracker", label: "Tracker" },
   { href: "/interviews", label: "Interviews" },
   { href: "/networking", label: "Networking" },
   { href: "/resume", label: "Resume" },

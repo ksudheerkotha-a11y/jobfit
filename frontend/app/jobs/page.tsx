@@ -85,6 +85,7 @@ export default function Jobs() {
     </div>
   ) : (
     <>
+      <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
       <BrowseMatches
         resumeText={resumeText}
         accessToken={session.access_token}
@@ -92,7 +93,6 @@ export default function Jobs() {
         savedJobIds={savedJobIds}
         onSaveToggle={handleSaveToggle}
       />
-      <JobSearch userId={session.user.id} savedJobIds={savedJobIds} onSaveToggle={handleSaveToggle} />
       <SavedJobs userId={session.user.id} savedJobs={savedJobs} onUnsave={handleUnsave} />
     </>
   );
