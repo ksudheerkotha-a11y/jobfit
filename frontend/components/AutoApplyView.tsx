@@ -18,6 +18,7 @@ export function AutoApplyView({
   resumeVersions,
   queueItems,
   running,
+  runResult,
   onSaveSettings,
   onRunNow,
   onMarkApplied,
@@ -27,6 +28,7 @@ export function AutoApplyView({
   resumeVersions: ResumeVersion[];
   queueItems: AutoApplyQueueItem[];
   running: boolean;
+  runResult: string | null;
   onSaveSettings: (next: Partial<AutoApplySettings>) => Promise<void>;
   onRunNow: () => Promise<void>;
   onMarkApplied: (item: AutoApplyQueueItem) => Promise<void>;
@@ -139,6 +141,11 @@ export function AutoApplyView({
               {running ? "Checking for matches..." : "Run now"}
             </button>
           </div>
+          {runResult && !running && (
+            <p className={runResult.startsWith("Run failed") ? "error" : "hint"} style={{ margin: 0 }}>
+              {runResult}
+            </p>
+          )}
         </div>
       </div>
 

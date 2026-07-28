@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 import { AUTO_APPLY_QUEUE_SELECT, AutoApplyQueueItem, AutoApplySettings, ResumeVersion } from "@/lib/types";
@@ -31,6 +31,31 @@ export default function AutoApply() {
   const [queueItems, setQueueItems] = useState<AutoApplyQueueItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState<string | null>(null);
+
+  const runNow = useCallback(async (): Promise<{ created: number; reason?: string; error?: string }> => {
+    if (!session) return { created: 0 };
+    try {
+      const res = await fetch("/api/auto-apply/run", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) return { created: 0, error: data.error || `Request failed (${res.status})` };
+      return data;
+    } catch {
+      return { created: 0, error: "Couldn't reach the server — check your connection and try again." };
+    }
+  }, [session]);
+
+  function describeRunResult(result: { created: number; reason?: string; error?: string }): string {
+    if (result.error) return `Run failed: ${result.error}`;
+    if (result.created > 0) return `Queued ${result.created} new draft${result.created === 1 ? "" : "s"}.`;
+    if (result.reason === "no_resume") return "No resume text found — set a resume in the dropdown above or add one in the Resume Center.";
+    if (result.reason === "cap_reached") return "Today's daily cap is already used up — raise it above or check back tomorrow.";
+    if (result.reason === "disabled") return "Auto Apply is off — enable it above first.";
+    return "No new matches met your quality bar right now — try lowering it, or check back after the next match run.";
+  }
 
   async function refetchQueue() {
     const { data } = await supabase
@@ -54,19 +79,16 @@ export default function AutoApply() {
       setQueueItems((queueRes.data as unknown as AutoApplyQueueItem[]) ?? []);
       setLoadingData(false);
 
-      // Fire-and-forget: check for newly-qualifying matches on every visit.
-      // Cheap when there's nothing new to draft — the route only spends a
-      // Groq call per genuinely new candidate.
+      // Check for newly-qualifying matches on every visit. Cheap when
+      // there's nothing new to draft — the route only spends a Groq call
+      // per genuinely new candidate. Silent on this automatic check (no
+      // toast) — errors still surface via "Run now", which uses the same
+      // path.
       if (settingsRes.data?.enabled && session) {
-        fetch("/api/auto-apply/run", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-          .then(() => refetchQueue())
-          .catch(() => {});
+        runNow().then(() => refetchQueue());
       }
     });
-  }, [session]);
+  }, [session, runNow]);
 
   async function handleSaveSettings(next: Partial<AutoApplySettings>) {
     if (!session) return;
@@ -78,10 +100,9 @@ export default function AutoApply() {
   async function handleRunNow() {
     if (!session) return;
     setRunning(true);
-    await fetch("/api/auto-apply/run", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    }).catch(() => {});
+    setRunResult(null);
+    const result = await runNow();
+    setRunResult(describeRunResult(result));
     await refetchQueue();
     setRunning(false);
   }
@@ -149,6 +170,7 @@ export default function AutoApply() {
       resumeVersions={resumeVersions}
       queueItems={queueItems}
       running={running}
+      runResult={runResult}
       onSaveSettings={handleSaveSettings}
       onRunNow={handleRunNow}
       onMarkApplied={handleMarkApplied}
