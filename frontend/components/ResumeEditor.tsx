@@ -13,6 +13,7 @@ import {
   ResumeVersion,
   SkillEntry,
 } from "@/lib/types";
+import { downloadCoverLetterDocx, downloadResumeDocx } from "@/lib/generateResumeDocx";
 
 const SECTION_LABELS: Record<string, string> = {
   summary: "Summary",
@@ -72,6 +73,8 @@ export function ResumeEditor({
   const [letterDraft, setLetterDraft] = useState(coverLetterText);
   const [savingLetter, setSavingLetter] = useState(false);
   const [letterError, setLetterError] = useState<string | null>(null);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
+  const [docxError, setDocxError] = useState<string | null>(null);
   const letterDirty = letterDraft !== coverLetterText;
 
   const selected = versions.find((v) => v.id === selectedId) ?? versions.find((v) => v.is_default) ?? versions[0];
@@ -104,6 +107,26 @@ export function ResumeEditor({
     updatePrefs({ sectionOrder: order });
   }
 
+  async function handleDownloadDocx() {
+    setDownloadingDocx(true);
+    setDocxError(null);
+    try {
+      if (tab === "cover-letter") {
+        await downloadCoverLetterDocx(letterDraft, prefs);
+      } else {
+        await downloadResumeDocx(
+          { profile, email, education, experience, projects, skills, prefs },
+          hasStructuredData,
+          selected?.resume_text ?? ""
+        );
+      }
+    } catch (err) {
+      setDocxError(err instanceof Error ? err.message : "Couldn't generate that Word file — try again");
+    } finally {
+      setDownloadingDocx(false);
+    }
+  }
+
   if (versions.length === 0) {
     return (
       <div className="card">
@@ -118,15 +141,27 @@ export function ResumeEditor({
         <div>
           <h2 className="card-title-icon" style={{ margin: 0 }}>
             Resume
-            <span className="badge badge-muted">PDF</span>
+            <span className="badge badge-muted">PDF · DOCX</span>
           </h2>
           <p className="hint" style={{ margin: "0.3rem 0 0" }}>
             Tweak how it reads and looks. jobfit remembers your rules and applies them everywhere.
           </p>
         </div>
-        <button type="button" className="primary" onClick={() => window.print()}>
-          Download
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button type="button" className="primary" onClick={() => window.print()}>
+              PDF
+            </button>
+            <button type="button" className="ghost" disabled={downloadingDocx} onClick={handleDownloadDocx}>
+              {downloadingDocx ? "Preparing..." : "Word (.docx)"}
+            </button>
+          </div>
+          {docxError && (
+            <p className="error" style={{ margin: 0, fontSize: "0.8125rem" }}>
+              {docxError}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="resume-version-row">
