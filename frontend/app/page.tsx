@@ -39,6 +39,7 @@ export default function Home() {
   const [assistantOpen, setAssistantOpen] = useAssistantOpen();
   const [matches, setMatches] = useState<MatchedJobRow[]>([]);
   const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([]);
+  const [hasResume, setHasResume] = useState<boolean | null>(null);
   // Starts true (not false) so the dashboard renders its loading skeleton
   // rather than an empty state before the fetch below resolves.
   const [loadingData, setLoadingData] = useState(true);
@@ -57,14 +58,16 @@ export default function Home() {
         .gte("scheduled_at", new Date().toISOString())
         .order("scheduled_at", { ascending: true })
         .limit(3),
-    ]).then(([matchesRes, interviewsRes]) => {
+      supabase.from("resume_versions").select("id").limit(1),
+    ]).then(([matchesRes, interviewsRes, resumeVersionsRes]) => {
       // A failed query here would otherwise render as "no matches yet" —
       // indistinguishable from a genuinely empty shortlist, which sends
       // the user chasing a non-problem.
-      const err = matchesRes.error || interviewsRes.error;
+      const err = matchesRes.error || interviewsRes.error || resumeVersionsRes.error;
       if (err) setLoadError("Couldn't load your dashboard data — try refreshing.");
       setMatches((matchesRes.data as unknown as MatchedJobRow[]) ?? []);
       setUpcomingInterviews((interviewsRes.data as Interview[]) ?? []);
+      setHasResume((resumeVersionsRes.data?.length ?? 0) > 0);
       setLoadingData(false);
     });
   }, [session]);
@@ -195,6 +198,29 @@ export default function Home() {
   const content = (
     <>
       {loadError && <p className="error">{loadError}</p>}
+
+      {!loadingData && hasResume === false && (
+        <div className="card">
+          <div className="focus-banner">
+            <div className="focus-banner-copy">
+              <span className="focus-banner-icon">
+                <SparkleIcon size={18} />
+              </span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 600 }}>Welcome to jobfit — let&apos;s find your matches</p>
+                <p className="hint" style={{ margin: 0 }}>
+                  Add your resume and jobfit&apos;s AI will start scoring you against new postings every 12
+                  hours.
+                </p>
+              </div>
+            </div>
+            <Link href="/resume" className="primary">
+              Add your resume →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {loadingData ? (
         <div className="stat-grid">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -319,57 +345,58 @@ export default function Home() {
         </div>
       )}
 
-      <div className="card">
-        <div className="card-header-static">
-          <h2 style={{ margin: 0 }}>Top job matches</h2>
-          <Link href="/jobs" className="icon-link">
-            Browse jobs →
-          </Link>
-        </div>
-        {loadingData ? (
-          <div className="skeleton-table" style={{ marginTop: "0.85rem" }}>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div className="skeleton-row" key={i} />
-            ))}
+      {hasResume !== false && (
+        <div className="card">
+          <div className="card-header-static">
+            <h2 style={{ margin: 0 }}>Top job matches</h2>
+            <Link href="/jobs" className="icon-link">
+              Browse jobs →
+            </Link>
           </div>
-        ) : topMatches.length === 0 ? (
-          <p className="empty-state">
-            No matches yet — add a resume in the Resume tab and the next scheduled match run will
-            populate this.
-          </p>
-        ) : (
-          <div className="top-matches-row-wrap" style={{ marginTop: "0.85rem" }}>
-            <div className="top-matches-row">
-              {topMatches.map((m, i) => {
-                const pct = Math.round(m.fit_score * 100);
-                return (
-                  <JobCard
-                    key={m.job_id}
-                    index={i}
-                    matchPct={pct}
-                    postedLabel={m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
-                    title={m.jobs?.title ?? ""}
-                    company={m.jobs?.company ?? ""}
-                    skills={m.missing_skills}
-                    actions={
-                      <>
-                        <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
-                          Pass
-                        </button>
-                        {m.jobs?.apply_url && (
-                          <a className="primary" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
-                            Apply
-                          </a>
-                        )}
-                      </>
-                    }
-                  />
-                );
-              })}
+          {loadingData ? (
+            <div className="skeleton-table" style={{ marginTop: "0.85rem" }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div className="skeleton-row" key={i} />
+              ))}
             </div>
-          </div>
-        )}
-      </div>
+          ) : topMatches.length === 0 ? (
+            <p className="empty-state">
+              No matches yet — the next scheduled match run (every 12h) will populate this.
+            </p>
+          ) : (
+            <div className="top-matches-row-wrap" style={{ marginTop: "0.85rem" }}>
+              <div className="top-matches-row">
+                {topMatches.map((m, i) => {
+                  const pct = Math.round(m.fit_score * 100);
+                  return (
+                    <JobCard
+                      key={m.job_id}
+                      index={i}
+                      matchPct={pct}
+                      postedLabel={m.jobs?.posted_at ? relativeTime(m.jobs.posted_at) : "Date unknown"}
+                      title={m.jobs?.title ?? ""}
+                      company={m.jobs?.company ?? ""}
+                      skills={m.missing_skills}
+                      actions={
+                        <>
+                          <button type="button" className="ghost" onClick={() => handleStatusChange(m.job_id, "dismissed")}>
+                            Pass
+                          </button>
+                          {m.jobs?.apply_url && (
+                            <a className="primary" href={m.jobs.apply_url} target="_blank" rel="noreferrer">
+                              Apply
+                            </a>
+                          )}
+                        </>
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!loadingData && matches.length > 0 && (
         <>
