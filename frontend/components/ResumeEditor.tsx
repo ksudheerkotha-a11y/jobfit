@@ -14,6 +14,9 @@ import {
   SkillEntry,
 } from "@/lib/types";
 import { downloadCoverLetterDocx, downloadResumeDocx } from "@/lib/generateResumeDocx";
+import { SparkleIcon } from "@/components/icons";
+
+type AnalyzeState = { loading: boolean; error: string | null; suggestions: string[] };
 
 const SECTION_LABELS: Record<string, string> = {
   summary: "Summary",
@@ -49,8 +52,10 @@ export function ResumeEditor({
   projects,
   skills,
   coverLetterText,
+  accessToken,
   onSavePrefs,
   onSaveCoverLetter,
+  onAnalyzed,
 }: {
   versions: ResumeVersion[];
   selectedId: number | null;
@@ -64,8 +69,10 @@ export function ResumeEditor({
   projects: ProjectEntry[];
   skills: SkillEntry[];
   coverLetterText: string;
+  accessToken: string;
   onSavePrefs: (id: number, prefs: Partial<FormatPrefs>) => Promise<void>;
   onSaveCoverLetter: (text: string) => Promise<void>;
+  onAnalyzed: (id: number, atsScore: number, keywords: string[]) => Promise<void>;
 }) {
   const [tab, setTab] = useState<"resume" | "cover-letter">("resume");
   const [sectionsOpen, setSectionsOpen] = useState(false);
@@ -75,10 +82,12 @@ export function ResumeEditor({
   const [letterError, setLetterError] = useState<string | null>(null);
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [docxError, setDocxError] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState<Record<number, AnalyzeState>>({});
   const letterDirty = letterDraft !== coverLetterText;
 
   const selected = versions.find((v) => v.id === selectedId) ?? versions.find((v) => v.is_default) ?? versions[0];
   const prefs = mergedPrefs(selected);
+  const analyzeState = selected ? analyzing[selected.id] : undefined;
 
   const hasStructuredData =
     !!profile?.professional_summary.trim() ||
@@ -105,6 +114,28 @@ export function ResumeEditor({
     if (target < 0 || target >= order.length) return;
     [order[index], order[target]] = [order[target], order[index]];
     updatePrefs({ sectionOrder: order });
+  }
+
+  async function handleAnalyze() {
+    if (!selected) return;
+    const id = selected.id;
+    setAnalyzing((a) => ({ ...a, [id]: { loading: true, error: null, suggestions: [] } }));
+    try {
+      const res = await fetch("/api/analyze-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ resumeText: selected.resume_text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      await onAnalyzed(id, data.atsScore, data.keywords);
+      setAnalyzing((a) => ({ ...a, [id]: { loading: false, error: null, suggestions: data.suggestions ?? [] } }));
+    } catch (err) {
+      setAnalyzing((a) => ({
+        ...a,
+        [id]: { loading: false, error: err instanceof Error ? err.message : "Analysis failed", suggestions: [] },
+      }));
+    }
   }
 
   async function handleDownloadDocx() {
@@ -325,6 +356,52 @@ export function ResumeEditor({
           </div>
         )}
       </div>
+
+      {tab === "resume" && selected && (
+        <div style={{ background: "var(--page-plane)", borderRadius: 12, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+          <div className="focus-banner">
+            <div className="focus-banner-copy">
+              <span className="focus-banner-icon">
+                <SparkleIcon size={18} />
+              </span>
+              <div>
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  {selected.ats_score !== null ? `ATS score: ${selected.ats_score}/100` : "Check your ATS compatibility"}
+                </p>
+                <p className="hint" style={{ margin: 0 }}>
+                  {selected.ats_score !== null
+                    ? "How well this resume parses for applicant tracking systems, with quick fixes below."
+                    : "See how a resume-screening bot would read this, plus specific fixes — takes a few seconds."}
+                </p>
+              </div>
+            </div>
+            <button type="button" className={selected.ats_score !== null ? "ghost" : "primary"} disabled={analyzeState?.loading} onClick={handleAnalyze}>
+              {analyzeState?.loading ? "Analyzing..." : selected.ats_score !== null ? "Re-analyze" : "Analyze"}
+            </button>
+          </div>
+          {analyzeState?.error && (
+            <p className="error" style={{ marginTop: "0.6rem" }}>
+              {analyzeState.error}
+            </p>
+          )}
+          {selected.keywords.length > 0 && (
+            <div className="pill-row" style={{ marginTop: "0.6rem" }}>
+              {selected.keywords.slice(0, 10).map((k) => (
+                <span className="pill" key={k}>
+                  {k}
+                </span>
+              ))}
+            </div>
+          )}
+          {analyzeState?.suggestions && analyzeState.suggestions.length > 0 && (
+            <ul className="hint" style={{ margin: "0.6rem 0 0", paddingLeft: "1.1rem" }}>
+              {analyzeState.suggestions.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="resume-doc-frame">
         {tab === "cover-letter" ? (

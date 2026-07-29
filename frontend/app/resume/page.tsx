@@ -242,8 +242,10 @@ export default function Resume() {
         projects={projects}
         skills={skills}
         coverLetterText={coverLetterText}
+        accessToken={session.access_token}
         onSavePrefs={handleSaveFormatPrefs}
         onSaveCoverLetter={handleSaveCoverLetter}
+        onAnalyzed={handleAnalyzeResumeVersion}
       />
       <ResumeCenter
         accessToken={session.access_token}
