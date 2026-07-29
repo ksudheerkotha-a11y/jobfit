@@ -148,11 +148,22 @@ export function ResumeEditor({
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.4rem" }}>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button type="button" className="primary" onClick={() => window.print()}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="primary"
+              style={{ padding: "0.4rem 0.9rem", whiteSpace: "nowrap" }}
+              onClick={() => window.print()}
+            >
               PDF
             </button>
-            <button type="button" className="ghost" disabled={downloadingDocx} onClick={handleDownloadDocx}>
+            <button
+              type="button"
+              className="ghost"
+              style={{ padding: "0.4rem 0.9rem", whiteSpace: "nowrap" }}
+              disabled={downloadingDocx}
+              onClick={handleDownloadDocx}
+            >
               {downloadingDocx ? "Preparing..." : "Word (.docx)"}
             </button>
           </div>

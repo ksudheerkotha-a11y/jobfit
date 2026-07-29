@@ -328,6 +328,7 @@ body {
   top: calc(100% + 0.5rem);
   right: 0;
   width: 320px;
+  max-width: calc(100vw - 3rem);
   max-height: 420px;
   overflow-y: auto;
   background: var(--surface-card);
@@ -335,6 +336,16 @@ body {
   border-radius: 12px;
   box-shadow: var(--shadow-card);
   z-index: 30;
+}
+
+@media (max-width: 640px) {
+  /* On mobile the header wraps, so the bell sits near the left edge —
+     anchoring the panel from its right edge (as on desktop, where the
+     bell is far to the right) would push almost all of it off-screen. */
+  .notification-panel {
+    left: 0;
+    right: auto;
+  }
 }
 
 .notification-panel-header {
@@ -1478,6 +1489,13 @@ select.control-input {
   padding: 2.5rem 1.5rem 4rem;
 }
 
+@media (max-width: 640px) {
+  .container,
+  .container-wide {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+}
+
 .assistant-layout {
   display: flex;
   align-items: flex-start;
@@ -1673,6 +1691,7 @@ select.control-input {
 
 .resume-editor-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
@@ -1705,6 +1724,7 @@ select.control-input {
   top: calc(100% + 0.4rem);
   left: 0;
   width: 200px;
+  max-width: calc(100vw - 5rem);
   background: var(--surface-card);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1742,6 +1762,21 @@ select.control-input {
 
 .resume-doc-fit {
   padding: 1.5rem 2.25rem;
+}
+
+@media (max-width: 640px) {
+  .resume-doc-frame {
+    padding: 1rem 0.5rem;
+  }
+
+  .resume-doc {
+    padding: 1.5rem 1.25rem;
+    min-height: 0;
+  }
+
+  .resume-doc-fit {
+    padding: 1.25rem 1rem;
+  }
 }
 
 .resume-doc-fit .resume-doc-section {
