@@ -32,6 +32,19 @@
 #   lever slug       = the slug in jobs.lever.co/<slug>
 #   ashby board      = the slug in jobs.ashbyhq.com/<board>
 #   remoteok         = no token needed, one global feed
+#
+# Added 2026-07-30: pool expansion for new-user coverage — every token below
+# was curl-verified live against its board API immediately before adding,
+# with raw posting counts at verification time (before freshness/dedupe):
+#   Greenhouse: dropbox (27), gitlab (187), robinhood (123), squarespace (16),
+#     instacart (125), pinterest (202), elastic (221), mongodb (399),
+#     webflow (23), samsara (311), brex (270), affirm (177), lyft (160),
+#     monzo (70), duolingo (64)
+#   Ashby: perplexity (86), clickup (65)
+#   (Several other candidates — plaid, snowflake, confluent, hashicorp,
+#   canva, doordash, zendesk, docusign, retool, notion via greenhouse,
+#   and most tried Lever slugs — 404'd on their public board API and were
+#   left out rather than added unverified.)
 companies:
   - type: greenhouse
     token: postman
@@ -91,6 +104,40 @@ companies:
     board: openai
   - type: ashby
     board: substack
+  - type: ashby
+    board: perplexity
+  - type: ashby
+    board: clickup
+  - type: greenhouse
+    token: dropbox
+  - type: greenhouse
+    token: gitlab
+  - type: greenhouse
+    token: robinhood
+  - type: greenhouse
+    token: squarespace
+  - type: greenhouse
+    token: instacart
+  - type: greenhouse
+    token: pinterest
+  - type: greenhouse
+    token: elastic
+  - type: greenhouse
+    token: mongodb
+  - type: greenhouse
+    token: webflow
+  - type: greenhouse
+    token: samsara
+  - type: greenhouse
+    token: brex
+  - type: greenhouse
+    token: affirm
+  - type: greenhouse
+    token: lyft
+  - type: greenhouse
+    token: monzo
+  - type: greenhouse
+    token: duolingo
   - type: remoteok
 
 # Broad, cross-domain skill/keyword vocabulary — Customer Success/SaaS terms
