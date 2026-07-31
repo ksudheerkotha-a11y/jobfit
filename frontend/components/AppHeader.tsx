@@ -19,7 +19,11 @@ const NAV_LINKS = [
   { href: "/profile", label: "Profile" },
 ] as const;
 
-export type ActiveRoute = (typeof NAV_LINKS)[number]["href"];
+// "/admin" is intentionally not in NAV_LINKS — no public nav item should
+// advertise the admin page to every signed-in user. It's still a valid
+// value here so the admin page itself can render AppHeader without a type
+// error; verifyAdmin (lib/adminAuth.ts) is the real access gate, not this.
+export type ActiveRoute = (typeof NAV_LINKS)[number]["href"] | "/admin";
 
 function openAssistant() {
   localStorage.setItem(ASSISTANT_OPEN_KEY, "1");
