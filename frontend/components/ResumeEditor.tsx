@@ -96,6 +96,14 @@ export function ResumeEditor({
     projects.length > 0 ||
     skills.length > 0;
 
+  // A version tailored for a specific job (source_resume_id set) carries its
+  // own complete, job-specific text — show that verbatim instead of the
+  // generic live Profile document, even if it happens to be the default and
+  // even though the user has structured Profile data. Otherwise every
+  // tailored resume would render identically to the untailored one, which
+  // defeats the point of tailoring it in the first place.
+  const showStructuredDoc = hasStructuredData && !selected?.source_resume_id;
+
   const skillsByCategory = useMemo(() => {
     return skills.reduce<Record<string, SkillEntry[]>>((acc, s) => {
       (acc[s.category] ??= []).push(s);
@@ -147,7 +155,7 @@ export function ResumeEditor({
       } else {
         await downloadResumeDocx(
           { profile, email, education, experience, projects, skills, prefs },
-          hasStructuredData,
+          showStructuredDoc,
           selected?.resume_text ?? ""
         );
       }
@@ -436,7 +444,7 @@ export function ResumeEditor({
             )}
             {letterError && <p className="error" style={{ marginTop: "0.5rem" }}>{letterError}</p>}
           </div>
-        ) : hasStructuredData ? (
+        ) : showStructuredDoc ? (
           <div
             className={`resume-doc resume-doc-${prefs.template} ${prefs.fitToOnePage ? "resume-doc-fit" : ""}`}
             style={{ fontFamily: prefs.font, fontSize: `${prefs.fontSize}pt`, textAlign: prefs.align === "justified" ? "justify" : "left" }}
@@ -535,8 +543,14 @@ export function ResumeEditor({
           <div className={`resume-doc resume-doc-${prefs.template}`} style={{ fontFamily: prefs.font, fontSize: `${prefs.fontSize}pt` }}>
             <pre className="resume-doc-plaintext">{selected?.resume_text || "No resume text yet."}</pre>
             <p className="hint resume-doc-hint">
-              Showing the raw text for this version — fill out your <Link href="/profile">Profile</Link> for a
-              formatted document instead.
+              {selected?.source_resume_id
+                ? "This version was tailored for a specific job — download it as PDF or Word and use it for that application."
+                : (
+                  <>
+                    Showing the raw text for this version — fill out your <Link href="/profile">Profile</Link> for a
+                    formatted document instead.
+                  </>
+                )}
             </p>
           </div>
         )}

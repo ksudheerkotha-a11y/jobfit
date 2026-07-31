@@ -4,6 +4,9 @@ import { callGroq, verifySession } from "@/lib/groqServer";
 export const runtime = "nodejs";
 
 const TAILOR_PROMPT = `You are helping a candidate tailor their resume to one specific job posting.
+Produce a COMPLETE, ready-to-submit resume — not suggestions, not a partial
+rewrite of just one section. The candidate should be able to copy your
+output and use it to apply for this job as-is.
 
 Candidate's current resume:
 {resume}
@@ -11,27 +14,24 @@ Candidate's current resume:
 Job ({title} at {company}):
 {jd}
 
-Produce a tailored version of the resume's SUMMARY and SKILLS sections only —
-not a full rewrite — that emphasizes what this specific JD is asking for,
-using only experience and skills already present in the original resume.
-Never invent experience, employers, dates, or skills that aren't there.
+Rewrite the entire resume so it's optimized for this specific job:
+- Keep every employer, job title, date range, degree, and school EXACTLY as
+  in the original — never invent, remove, or alter facts, dates, or names.
+- Reorder and rephrase bullets to foreground the experience most relevant to
+  this job, using the JD's own terminology where the underlying fact is the
+  same (e.g. if the JD says "stakeholder management" and the original says
+  "cross-functional collaboration" for the same work, prefer the JD's
+  phrasing).
+- Rewrite the summary (if the original has one) to lead with what this JD
+  cares about most.
+- Reorder the skills list so the most relevant skills to this JD come first.
+- Never add a skill, tool, employer, or achievement that isn't already
+  present in the original resume.
+- Keep the same overall section structure and order as the original resume.
 
-Output in this exact structure, plain text, no markdown:
-
-TAILORED SUMMARY:
-<2-3 sentences, rewritten to foreground the parts of their background this
-JD cares most about>
-
-SUGGESTED BULLET REWRITES:
-<3-5 existing resume bullets rewritten to use this JD's own terminology
-where the underlying fact is the same — e.g. if the JD says "stakeholder
-management" and the resume says "cross-functional collaboration" for the
-same kind of work, prefer the JD's phrasing. Each on its own line, prefixed
-with "- ">
-
-SKILLS TO LEAD WITH:
-<comma-separated list of skills from the resume to put first/most visibly,
-ranked by relevance to this JD>`;
+Output the finished resume as plain text only — no markdown, no commentary,
+no headers like "TAILORED RESUME:" — just the resume itself, ready to copy
+and use.`;
 
 export async function POST(req: NextRequest) {
   const session = await verifySession(req);
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     .replace("{company}", company)
     .replace("{jd}", jobDescription.trim());
 
-  const result = await callGroq(prompt, 700);
+  const result = await callGroq(prompt, 3000);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

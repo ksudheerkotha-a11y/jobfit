@@ -267,7 +267,7 @@ export function MatchesTable({
         {activePanel && !activePanel.loading && !activePanel.error && (
           <div>
             <textarea
-              rows={openPanel.type === "tailor-resume" ? 10 : 8}
+              rows={openPanel.type === "tailor-resume" ? 20 : 8}
               value={activePanel.text}
               onChange={(e) =>
                 setPanels((p) => ({
