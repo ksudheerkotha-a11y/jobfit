@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/lib/useSession";
 import { APPLIED_STATUSES, Contact, MATCHES_SELECT, MatchedJobRow, MatchStatus, ResumeVersion } from "@/lib/types";
@@ -285,8 +286,15 @@ export default function Tracker() {
           </div>
         ) : matches.length === 0 ? (
           <p className="empty-state">
-            No matches yet — the next scheduled ingest + match run (every 12h via GitHub Actions) will
-            populate your shortlist here.
+            {resumeVersions.length === 0 ? (
+              <>
+                No matches yet — matching runs against your resume, and you haven&apos;t added one. Head to{" "}
+                <Link href="/resume">Resume</Link> to add yours, then the next scheduled ingest + match run
+                (every 12h via GitHub Actions) will populate your shortlist here.
+              </>
+            ) : (
+              "No matches yet — the next scheduled ingest + match run (every 12h via GitHub Actions) will populate your shortlist here."
+            )}
           </p>
         ) : visibleMatches.length === 0 ? (
           <p className="empty-state">
